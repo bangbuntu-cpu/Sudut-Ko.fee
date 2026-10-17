@@ -1,0 +1,6 @@
+{
+  "name": "Kopi Kita - Toko Kopi Online & Member Rewards",
+  "description": "Aplikasi penjualan kopi online modern dengan sistem member, katalog produk kopi pilihan, keranjang belanja, poin loyalitas, dan dashboard admin.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

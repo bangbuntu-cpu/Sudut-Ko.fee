@@ -1,0 +1,93 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Default-deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    function isDemo(userId) {
+      return userId is string && (userId.matches('^demo_.*') || userId.matches('^demo-.*'));
+    }
+
+    // Bootstrapped admin email check & admins collection check
+    function isBootstrappedAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'bangbuntu@gmail.com' ||
+        request.auth.token.email == 'admin@sudutkofee.com' ||
+        request.auth.token.email == 'admin@kopikita.com'
+      );
+    }
+
+    function isAdmin() {
+      return isBootstrappedAdmin() || (
+        isSignedIn() && (
+          exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+          (exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+           get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin')
+        )
+      );
+    }
+
+    // Admins collection (tracking admin UIDs)
+    match /admins/{userId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Users collection
+    match /users/{userId} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if isAdmin() || isDemo(userId);
+    }
+
+    // Products collection (public catalog read, writes allowed for admin or demo)
+    match /products/{productId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Rewards collection (public catalog read, writes allowed for admin or redeem)
+    match /rewards/{rewardId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Orders collection
+    match /orders/{orderId} {
+      allow read: if true;
+      allow create: if true;
+      allow update: if true;
+      allow delete: if true;
+    }
+
+    // Point History collection
+    match /pointHistory/{historyId} {
+      allow read, write: if true;
+    }
+
+    // Redemptions collection
+    match /redemptions/{redemptionId} {
+      allow read, write: if true;
+    }
+
+    // Settings collection (settings/general)
+    match /settings/{settingId} {
+      allow read, write: if true;
+    }
+  }
+}

@@ -1,0 +1,140 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile with role and membership details",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "maxLength": 128 },
+        "nama": { "type": "string", "maxLength": 100 },
+        "email": { "type": "string", "maxLength": 150 },
+        "noHp": { "type": "string", "maxLength": 20 },
+        "alamat": { "type": "string", "maxLength": 300 },
+        "role": { "type": "string", "enum": ["admin", "user"] },
+        "isMember": { "type": "boolean" },
+        "poin": { "type": "number" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["uid", "nama", "email", "role", "isMember", "poin"]
+    },
+    "Product": {
+      "title": "Product",
+      "description": "Coffee and beverage products for sale",
+      "type": "object",
+      "properties": {
+        "nama": { "type": "string", "maxLength": 100 },
+        "deskripsi": { "type": "string", "maxLength": 1000 },
+        "harga": { "type": "number" },
+        "stok": { "type": "number" },
+        "kategori": { "type": "string", "maxLength": 50 },
+        "gambar": { "type": "string", "maxLength": 500 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["nama", "harga", "stok", "kategori"]
+    },
+    "Reward": {
+      "title": "Reward",
+      "description": "Redeemable merchandise or item with loyalty points",
+      "type": "object",
+      "properties": {
+        "nama": { "type": "string", "maxLength": 100 },
+        "poinDibutuhkan": { "type": "number" },
+        "stok": { "type": "number" },
+        "gambar": { "type": "string", "maxLength": 500 },
+        "deskripsi": { "type": "string", "maxLength": 500 }
+      },
+      "required": ["nama", "poinDibutuhkan", "stok"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Online or offline sales order",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "userName": { "type": "string", "maxLength": 100 },
+        "userPhone": { "type": "string", "maxLength": 20 },
+        "userAddress": { "type": "string", "maxLength": 300 },
+        "items": { "type": "string" },
+        "total": { "type": "number" },
+        "status": { "type": "string", "enum": ["Menunggu", "Diproses", "Selesai", "Dibatalkan"] },
+        "metodeBayar": { "type": "string", "enum": ["qris", "transfer", "cod"] },
+        "sumber": { "type": "string", "enum": ["online", "offline"] },
+        "poinDidapat": { "type": "number" },
+        "catatan": { "type": "string", "maxLength": 300 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["userId", "total", "status", "metodeBayar", "sumber"]
+    },
+    "PointHistory": {
+      "title": "PointHistory",
+      "description": "Log of earned or redeemed points",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "tipe": { "type": "string", "enum": ["masuk", "keluar"] },
+        "jumlah": { "type": "number" },
+        "keterangan": { "type": "string", "maxLength": 200 },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["userId", "tipe", "jumlah", "keterangan"]
+    },
+    "Redemption": {
+      "title": "Redemption",
+      "description": "Redemption request of points for rewards",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string", "maxLength": 128 },
+        "rewardId": { "type": "string", "maxLength": 128 },
+        "namaReward": { "type": "string", "maxLength": 100 },
+        "poinDipakai": { "type": "number" },
+        "status": { "type": "string", "enum": ["Menunggu", "Selesai", "Dibatalkan"] },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["userId", "rewardId", "poinDipakai", "status"]
+    },
+    "Setting": {
+      "title": "Setting",
+      "description": "Store configuration such as points ratio",
+      "type": "object",
+      "properties": {
+        "nilaiPerPoin": { "type": "number" },
+        "namaToko": { "type": "string", "maxLength": 100 }
+      },
+      "required": ["nilaiPerPoin"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Stores user and member profile"
+    },
+    "/admins/{userId}": {
+      "schema": { "$ref": "#/entities/User" },
+      "description": "Stores admin UID markers"
+    },
+    "/products/{productId}": {
+      "schema": { "$ref": "#/entities/Product" },
+      "description": "Stores coffee catalog products"
+    },
+    "/rewards/{rewardId}": {
+      "schema": { "$ref": "#/entities/Reward" },
+      "description": "Stores loyalty reward catalog"
+    },
+    "/orders/{orderId}": {
+      "schema": { "$ref": "#/entities/Order" },
+      "description": "Stores orders placed online or manually input by admin"
+    },
+    "/pointHistory/{historyId}": {
+      "schema": { "$ref": "#/entities/PointHistory" },
+      "description": "Stores audit trail of points earned or spent"
+    },
+    "/redemptions/{redemptionId}": {
+      "schema": { "$ref": "#/entities/Redemption" },
+      "description": "Stores point redemption claims"
+    },
+    "/settings/{settingId}": {
+      "schema": { "$ref": "#/entities/Setting" },
+      "description": "Stores application configurations like point calculation value"
+    }
+  }
+}
