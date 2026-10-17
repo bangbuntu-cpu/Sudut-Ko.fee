@@ -68,8 +68,26 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
           </button>
         </div>
 
-        {/* Navigation Menu */}
-        <nav className="p-3 space-y-1 overflow-x-auto lg:overflow-visible flex lg:flex-col gap-1 lg:gap-1.5 no-scrollbar">
+        {/* Mobile Dropdown Menu Selector (< lg) */}
+        <div className="p-3 block lg:hidden">
+          <label className="block text-[10px] font-bold text-amber-300 uppercase tracking-wider mb-1">
+            Pilih Menu Admin:
+          </label>
+          <select
+            value={currentTab}
+            onChange={(e) => setCurrentTab(e.target.value)}
+            className="w-full px-3.5 py-2.5 rounded-xl bg-[#3B2215] text-white text-xs font-bold border border-amber-900 focus:outline-none focus:ring-2 focus:ring-amber-500"
+          >
+            {menuItems.map((item) => (
+              <option key={item.id} value={item.id} className="bg-[#2C1810] text-white">
+                {item.label}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Desktop Navigation Menu (lg:) */}
+        <nav className="p-3 space-y-1.5 hidden lg:block">
           {menuItems.map((item) => {
             const Icon = item.icon;
             const isActive = currentTab === item.id;
@@ -77,7 +95,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
               <button
                 key={item.id}
                 onClick={() => setCurrentTab(item.id)}
-                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all shrink-0 ${
+                className={`w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all ${
                   isActive
                     ? 'bg-amber-600 text-white shadow-md'
                     : 'text-stone-300 hover:bg-white/5 hover:text-white'
