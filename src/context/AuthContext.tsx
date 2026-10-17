@@ -189,8 +189,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         await signOut(auth).catch(() => {});
         throw new Error('Akun tidak terdaftar di database. Silakan daftar (register) terlebih dahulu.');
       }
+
+      if (userSnap.exists() && !isAdminEmail) {
+        const profile = userSnap.data() as UserProfile;
+        if (profile.password && profile.password !== pass) {
+          await signOut(auth).catch(() => {});
+          throw new Error('Password salah. Silakan periksa kembali password Anda.');
+        }
+      }
     } catch (err: any) {
-      if (err?.code === 'auth/operation-not-allowed' || err?.code === 'auth/configuration-not-found') {
+      if (
+        err?.code === 'auth/operation-not-allowed' ||
+        err?.code === 'auth/configuration-not-found' ||
+        err?.code === 'auth/invalid-credential' ||
+        err?.code === 'auth/wrong-password' ||
+        err?.code === 'auth/invalid-login-credentials'
+      ) {
         const uid = 'user_' + btoa(email).replace(/[^a-zA-Z0-9]/g, '').slice(0, 24);
         const userRef = doc(db, 'users', uid);
         const userSnap = await getDoc(userRef);
@@ -202,6 +216,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         let profile: UserProfile;
         if (userSnap.exists()) {
           profile = userSnap.data() as UserProfile;
+          if (profile.password && profile.password !== pass && !isAdminEmail) {
+            throw new Error('Password salah. Silakan periksa kembali password Anda.');
+          }
           if (isAdminEmail && profile.role !== 'admin') {
             profile.role = 'admin';
             await setDoc(userRef, { role: 'admin' }, { merge: true });
@@ -211,6 +228,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             uid,
             nama: 'Admin SUDUT KO.FEE',
             email,
+            password: pass,
             role: 'admin',
             isMember: false,
             poin: 0,
@@ -243,6 +261,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         uid: cred.user.uid,
         nama: nama || email.split('@')[0],
         email,
+        password: pass,
         role: isAdminEmail ? 'admin' : 'user',
         isMember: false,
         poin: 0,
@@ -265,6 +284,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           uid,
           nama: nama || (isAdminEmail ? 'Admin SUDUT KO.FEE' : email.split('@')[0]),
           email,
+          password: pass,
           role: isAdminEmail ? 'admin' : 'user',
           isMember: false,
           poin: 0,

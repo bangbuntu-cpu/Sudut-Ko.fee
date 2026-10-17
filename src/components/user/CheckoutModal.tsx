@@ -18,7 +18,7 @@ import { useAuth } from '../../context/AuthContext';
 import { useCart } from '../../context/CartContext';
 import { useToast } from '../../context/ToastContext';
 import { createOrder, subscribeStoreSettings } from '../../services/dbService';
-import { formatRupiah, calculatePoints } from '../../utils/format';
+import { formatRupiah, calculatePoints, getDirectImageUrl } from '../../utils/format';
 import { PaymentMethod, StoreSettings } from '../../types';
 import { MemberRegisterModal } from '../common/MemberRegisterModal';
 import { AuthModal } from '../auth/AuthModal';
@@ -327,7 +327,7 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
                 <div className="p-3.5 bg-stone-50 rounded-xl border border-stone-200 text-center">
                   <div className="inline-block p-2 bg-white rounded-xl shadow-xs border border-stone-200 mb-2">
                     <img
-                      src={storeSettings?.qrisImageUrl || 'https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=00020101021226580014ID.LINKAJA.WWW01189360091100223948515204581253033605802ID5910SUDUT KOFEE6007JAKARTA62070703A016304'}
+                      src={getDirectImageUrl(storeSettings?.qrisImageUrl) || 'https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=00020101021226580014ID.LINKAJA.WWW01189360091100223948515204581253033605802ID5910SUDUT KOFEE6007JAKARTA62070703A016304'}
                       alt={`QRIS ${storeSettings?.qrisMerchantName || 'SUDUT KO.FEE'}`}
                       className="w-32 h-32 mx-auto object-contain"
                     />

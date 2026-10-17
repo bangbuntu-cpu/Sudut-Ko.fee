@@ -7,17 +7,14 @@ import {
   MapPin,
   Save,
   Sparkles,
-  Database,
   Calculator,
-  RefreshCw,
   QrCode,
   CreditCard
 } from 'lucide-react';
 import { StoreSettings } from '../../types';
 import {
   getStoreSettings,
-  updateStoreSettings,
-  seedDatabaseIfEmpty
+  updateStoreSettings
 } from '../../services/dbService';
 import { formatRupiah, calculatePoints } from '../../utils/format';
 import { useToast } from '../../context/ToastContext';
@@ -46,7 +43,6 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({
   const [bankAccountHolder, setBankAccountHolder] = useState(currentSettings.bankAccountHolder || 'PT SUDUT KO.FEE NUSANTARA');
 
   const [isSaving, setIsSaving] = useState(false);
-  const [isSeeding, setIsSeeding] = useState(false);
 
   // Simulation calculator
   const [simulasiBelanja, setSimulasiBelanja] = useState<number>(50000);
@@ -93,21 +89,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({
     }
   };
 
-  const handleSeedMenuData = async () => {
-    setIsSeeding(true);
-    try {
-      const res = await seedDatabaseIfEmpty();
-      if (res.seeded) {
-        showToast('Berhasil menambahkan 8 produk kopi dan 4 reward loyalitas!', 'success');
-      } else {
-        showToast('Katalog sudah berisi produk. Tidak ada penambahan baru.', 'info');
-      }
-    } catch (err: unknown) {
-      showToast(err instanceof Error ? err.message : 'Gagal memuat menu bawaan', 'error');
-    } finally {
-      setIsSeeding(false);
-    }
-  };
+
 
   const simulasiPoin = calculatePoints(simulasiBelanja, nilaiPerPoin);
 
@@ -343,28 +325,6 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({
         </div>
       </form>
 
-      {/* Database Maintenance Section */}
-      <div className="bg-white p-5 sm:p-6 rounded-3xl border border-stone-200/90 shadow-xs flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mt-8">
-        <div>
-          <h3 className="font-extrabold text-sm text-stone-900 flex items-center gap-2">
-            <Database className="w-4 h-4 text-stone-500" />
-            Muat Menu Bawaan SUDUT KO.FEE
-          </h3>
-          <p className="text-xs text-stone-500 mt-0.5">
-            Muat ulang 8 produk kopi nusantara dan 4 reward jika daftar menu kosong.
-          </p>
-        </div>
-
-        <button
-          type="button"
-          onClick={handleSeedMenuData}
-          disabled={isSeeding}
-          className="px-4 py-2.5 rounded-xl border border-stone-300 hover:bg-stone-100 text-stone-700 text-xs font-bold transition flex items-center gap-2 shrink-0 cursor-pointer"
-        >
-          <RefreshCw className={`w-4 h-4 ${isSeeding ? 'animate-spin' : ''}`} />
-          <span>Muat Menu Bawaan</span>
-        </button>
-      </div>
     </div>
   );
 };

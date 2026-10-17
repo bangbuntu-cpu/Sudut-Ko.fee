@@ -6,6 +6,7 @@ export interface UserProfile {
   email: string;
   noHp?: string;
   alamat?: string;
+  password?: string;
   role: UserRole;
   isMember: boolean;
   poin: number;
