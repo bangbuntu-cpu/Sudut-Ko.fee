@@ -231,30 +231,72 @@ export async function syncWithSpreadsheet(): Promise<boolean> {
     const json = await res.json();
     if (json && json.success) {
       if (Array.isArray(json.products) && json.products.length > 0) {
-        cacheProducts = json.products;
+        cacheProducts = json.products.map((p: any) => ({
+          ...p,
+          id: String(p.id ?? ''),
+          nama: String(p.nama ?? ''),
+          deskripsi: String(p.deskripsi ?? ''),
+          kategori: String(p.kategori ?? 'Signature'),
+          gambar: String(p.gambar ?? ''),
+          harga: Number(p.harga) || 0,
+          stok: Number(p.stok) || 0
+        }));
         setStored(STORAGE_KEYS.PRODUCTS, cacheProducts);
         notify('products');
       }
       if (Array.isArray(json.rewards) && json.rewards.length > 0) {
-        cacheRewards = json.rewards;
+        cacheRewards = json.rewards.map((r: any) => ({
+          ...r,
+          id: String(r.id ?? ''),
+          nama: String(r.nama ?? ''),
+          deskripsi: String(r.deskripsi ?? ''),
+          gambar: String(r.gambar ?? ''),
+          poinDibutuhkan: Number(r.poinDibutuhkan) || 10,
+          stok: Number(r.stok) || 0
+        }));
         setStored(STORAGE_KEYS.REWARDS, cacheRewards);
         notify('rewards');
       }
       if (Array.isArray(json.orders)) {
-        cacheOrders = json.orders;
+        cacheOrders = json.orders.map((o: any) => ({
+          ...o,
+          id: String(o.id ?? ''),
+          userId: String(o.userId ?? ''),
+          userName: String(o.userName ?? ''),
+          userPhone: String(o.userPhone ?? ''),
+          userAddress: String(o.userAddress ?? ''),
+          catatan: String(o.catatan ?? ''),
+          total: Number(o.total) || 0,
+          status: o.status || 'Menunggu',
+          metodeBayar: o.metodeBayar || 'qris',
+          sumber: o.sumber || 'online',
+          poinDidapat: Number(o.poinDidapat) || 0,
+          items: Array.isArray(o.items) ? o.items : []
+        }));
         setStored(STORAGE_KEYS.ORDERS, cacheOrders);
         notify('orders');
       }
       if (Array.isArray(json.users) && json.users.length > 0) {
-        // Sanitize any formula error text from sheet
-        cacheUsers = json.users.map((u: UserProfile) => {
-          let cleanPhone = u.noHp || '';
-          if (cleanPhone === '#ERROR!' || cleanPhone === '#VALUE!') {
+        cacheUsers = json.users.map((u: any) => {
+          let cleanPhone = String(u.noHp ?? '');
+          if (
+            cleanPhone === '#ERROR!' ||
+            cleanPhone === '#VALUE!' ||
+            cleanPhone === 'undefined' ||
+            cleanPhone === 'null'
+          ) {
             cleanPhone = u.email === ADMIN_EMAIL ? '+62 812-3456-7890' : '';
           }
           return {
             ...u,
-            noHp: cleanPhone
+            uid: String(u.uid ?? ''),
+            nama: String(u.nama ?? ''),
+            email: String(u.email ?? ''),
+            noHp: cleanPhone,
+            alamat: String(u.alamat ?? ''),
+            role: (u.role === 'admin' ? 'admin' : 'user') as UserProfile['role'],
+            isMember: Boolean(u.isMember === true || u.isMember === 'TRUE' || u.isMember === 'true'),
+            poin: Number(u.poin) || 0
           };
         });
         setStored(STORAGE_KEYS.USERS, cacheUsers);
@@ -271,14 +313,26 @@ export async function syncWithSpreadsheet(): Promise<boolean> {
         notify('redemptions');
       }
       if (json.settings && typeof json.settings === 'object') {
-        let cleanContact = json.settings.kontak || '';
-        if (cleanContact === '#ERROR!' || cleanContact === '#VALUE!') {
+        let cleanContact = String(json.settings.kontak ?? '');
+        if (cleanContact === '#ERROR!' || cleanContact === '#VALUE!' || cleanContact === 'undefined') {
           cleanContact = '+62 82141837093';
+        }
+        let cleanBankAcc = String(json.settings.bankAccountNumber ?? '');
+        if (cleanBankAcc === '#ERROR!' || cleanBankAcc === '#VALUE!' || cleanBankAcc === 'undefined') {
+          cleanBankAcc = '1360030935750';
         }
         cacheSettings = {
           ...cacheSettings,
           ...json.settings,
-          kontak: cleanContact
+          namaToko: String(json.settings.namaToko || cacheSettings.namaToko),
+          kontak: cleanContact,
+          alamatToko: String(json.settings.alamatToko || cacheSettings.alamatToko),
+          nilaiPerPoin: Number(json.settings.nilaiPerPoin) || cacheSettings.nilaiPerPoin,
+          qrisMerchantName: String(json.settings.qrisMerchantName || cacheSettings.qrisMerchantName),
+          qrisImageUrl: String(json.settings.qrisImageUrl || cacheSettings.qrisImageUrl),
+          bankName: String(json.settings.bankName || cacheSettings.bankName),
+          bankAccountNumber: cleanBankAcc,
+          bankAccountHolder: String(json.settings.bankAccountHolder || cacheSettings.bankAccountHolder)
         };
         setStored(STORAGE_KEYS.SETTINGS, cacheSettings);
         notify('settings');

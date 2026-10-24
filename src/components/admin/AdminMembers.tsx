@@ -137,7 +137,7 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
         items: orderItems,
         total: offlineTotal,
         metodeBayar: offlinePayment,
-        catatan: offlineNotes.trim() || 'Transaksi kasir kafe (offline)',
+        catatan: String(offlineNotes || '').trim() || 'Transaksi kasir kafe (offline)',
         status: 'Selesai', // directly finished in store!
         poinDidapat: offlinePoints
       });

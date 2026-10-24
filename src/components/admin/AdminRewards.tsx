@@ -46,17 +46,21 @@ export const AdminRewards: React.FC<AdminRewardsProps> = ({ rewards }) => {
 
   const handleOpenEdit = (r: Reward) => {
     setEditingReward(r);
-    setNama(r.nama);
+    setNama(String(r.nama || ''));
     setPoinDibutuhkan(r.poinDibutuhkan);
     setStok(r.stok);
-    setGambar(r.gambar);
-    setDeskripsi(r.deskripsi);
+    setGambar(String(r.gambar || ''));
+    setDeskripsi(String(r.deskripsi || ''));
     setShowModal(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nama.trim() || poinDibutuhkan === '' || stok === '') {
+    const cleanNama = String(nama || '').trim();
+    const cleanGambar = String(gambar || '').trim();
+    const cleanDeskripsi = String(deskripsi || '').trim();
+
+    if (!cleanNama || poinDibutuhkan === '' || stok === '') {
       showToast('Harap lengkapi semua isian reward', 'warning');
       return;
     }
@@ -65,22 +69,22 @@ export const AdminRewards: React.FC<AdminRewardsProps> = ({ rewards }) => {
     try {
       if (editingReward) {
         await updateReward(editingReward.id, {
-          nama: nama.trim(),
+          nama: cleanNama,
           poinDibutuhkan: Number(poinDibutuhkan),
           stok: Number(stok),
-          gambar: gambar.trim(),
-          deskripsi: deskripsi.trim()
+          gambar: cleanGambar,
+          deskripsi: cleanDeskripsi
         });
-        showToast(`Reward "${nama}" berhasil diubah`, 'success');
+        showToast(`Reward "${cleanNama}" berhasil diubah`, 'success');
       } else {
         await addReward({
-          nama: nama.trim(),
+          nama: cleanNama,
           poinDibutuhkan: Number(poinDibutuhkan),
           stok: Number(stok),
-          gambar: gambar.trim() || 'https://images.unsplash.com/photo-1577705998148-6da4f3963bc8?q=80&w=600&auto=format&fit=crop',
-          deskripsi: deskripsi.trim()
+          gambar: cleanGambar || 'https://images.unsplash.com/photo-1577705998148-6da4f3963bc8?q=80&w=600&auto=format&fit=crop',
+          deskripsi: cleanDeskripsi
         });
-        showToast(`Reward "${nama}" berhasil ditambahkan`, 'success');
+        showToast(`Reward "${cleanNama}" berhasil ditambahkan`, 'success');
       }
       setShowModal(false);
     } catch (err: unknown) {

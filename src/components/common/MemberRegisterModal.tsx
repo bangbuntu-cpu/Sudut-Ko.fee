@@ -21,9 +21,9 @@ export const MemberRegisterModal: React.FC<MemberRegisterModalProps> = ({
   const { userProfile, updateMemberStatus } = useAuth();
   const { showToast } = useToast();
 
-  const [nama, setNama] = useState(userProfile?.nama || '');
-  const [noHp, setNoHp] = useState(userProfile?.noHp || '');
-  const [alamat, setAlamat] = useState(userProfile?.alamat || '');
+  const [nama, setNama] = useState(String(userProfile?.nama || ''));
+  const [noHp, setNoHp] = useState(String(userProfile?.noHp || ''));
+  const [alamat, setAlamat] = useState(String(userProfile?.alamat || ''));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [nilaiPerPoin, setNilaiPerPoin] = useState<number>(initialNilaiPerPoin || 13000);
 
@@ -40,14 +40,18 @@ export const MemberRegisterModal: React.FC<MemberRegisterModalProps> = ({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nama.trim() || !noHp.trim() || !alamat.trim()) {
+    const cleanNama = String(nama || '').trim();
+    const cleanNoHp = String(noHp || '').trim();
+    const cleanAlamat = String(alamat || '').trim();
+
+    if (!cleanNama || !cleanNoHp || !cleanAlamat) {
       showToast('Harap lengkapi semua data pendaftaran member', 'warning');
       return;
     }
 
     try {
       setIsSubmitting(true);
-      await updateMemberStatus(nama.trim(), noHp.trim(), alamat.trim());
+      await updateMemberStatus(cleanNama, cleanNoHp, cleanAlamat);
       showToast('Selamat! Anda resmi menjadi Member SUDUT KO.FEE ☕', 'success', 'Pendaftaran Berhasil');
       onSuccess();
     } catch (err: unknown) {

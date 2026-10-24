@@ -43,9 +43,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   if (isAdmin) return null;
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('qris');
-  const [nama, setNama] = useState(userProfile?.nama || '');
-  const [phone, setPhone] = useState(userProfile?.noHp || '');
-  const [address, setAddress] = useState(userProfile?.alamat || '');
+  const [nama, setNama] = useState(String(userProfile?.nama || ''));
+  const [phone, setPhone] = useState(String(userProfile?.noHp || ''));
+  const [address, setAddress] = useState(String(userProfile?.alamat || ''));
   const [notes, setNotes] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [copiedBank, setCopiedBank] = useState(false);
@@ -65,9 +65,9 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   // Sync state if userProfile updates
   React.useEffect(() => {
     if (userProfile) {
-      if (!nama) setNama(userProfile.nama || '');
-      if (!phone) setPhone(userProfile.noHp || '');
-      if (!address) setAddress(userProfile.alamat || '');
+      if (!nama) setNama(String(userProfile.nama || ''));
+      if (!phone) setPhone(String(userProfile.noHp || ''));
+      if (!address) setAddress(String(userProfile.alamat || ''));
     }
   }, [userProfile]);
 
@@ -104,7 +104,10 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
       return;
     }
 
-    if (!phone.trim() || !address.trim()) {
+    const cleanPhone = String(phone || '').trim();
+    const cleanAddress = String(address || '').trim();
+
+    if (!cleanPhone || !cleanAddress) {
       showToast('Harap lengkapi nomor telepon dan alamat pengiriman', 'warning');
       return;
     }
@@ -114,16 +117,16 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
 
       const orderId = await createOrder({
         userId: currentUser.uid,
-        userName: nama || userProfile?.nama || 'Pelanggan',
-        userPhone: phone,
-        userAddress: address,
+        userName: String(nama || userProfile?.nama || 'Pelanggan').trim(),
+        userPhone: cleanPhone,
+        userAddress: cleanAddress,
         items: toOrderItems(),
         total: totalPrice,
         status: 'Menunggu',
         metodeBayar: paymentMethod,
         sumber: 'online',
         poinDidapat: estimatedPoints,
-        catatan: notes.trim(),
+        catatan: String(notes || '').trim(),
         createdAt: new Date().toISOString()
       });
 

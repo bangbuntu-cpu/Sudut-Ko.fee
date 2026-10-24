@@ -48,15 +48,15 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({
   const [simulasiBelanja, setSimulasiBelanja] = useState<number>(50000);
 
   useEffect(() => {
-    setNilaiPerPoin(currentSettings.nilaiPerPoin || 13000);
-    setNamaToko(currentSettings.namaToko || 'SUDUT KO.FEE');
-    setKontak(currentSettings.kontak || '+62 812-3456-7890');
-    setAlamatToko(currentSettings.alamatToko || 'Jl. Senopati No. 45, Jakarta Selatan');
-    setQrisMerchantName(currentSettings.qrisMerchantName || 'SUDUT KO.FEE');
-    setQrisImageUrl(currentSettings.qrisImageUrl || '');
-    setBankName(currentSettings.bankName || 'BCA Virtual Account');
-    setBankAccountNumber(currentSettings.bankAccountNumber || '8000812990012345');
-    setBankAccountHolder(currentSettings.bankAccountHolder || 'PT SUDUT KO.FEE NUSANTARA');
+    setNilaiPerPoin(Number(currentSettings.nilaiPerPoin) || 13000);
+    setNamaToko(String(currentSettings.namaToko || 'SUDUT KO.FEE'));
+    setKontak(String(currentSettings.kontak || '+62 812-3456-7890'));
+    setAlamatToko(String(currentSettings.alamatToko || ''));
+    setQrisMerchantName(String(currentSettings.qrisMerchantName || 'SUDUT KO.FEE'));
+    setQrisImageUrl(String(currentSettings.qrisImageUrl || ''));
+    setBankName(String(currentSettings.bankName || 'BCA Virtual Account'));
+    setBankAccountNumber(String(currentSettings.bankAccountNumber || ''));
+    setBankAccountHolder(String(currentSettings.bankAccountHolder || ''));
   }, [currentSettings]);
 
   const handleSaveSettings = async (e: React.FormEvent) => {
@@ -70,14 +70,14 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({
     try {
       const updated: StoreSettings = {
         nilaiPerPoin: Number(nilaiPerPoin),
-        namaToko: namaToko.trim(),
-        kontak: kontak.trim(),
-        alamatToko: alamatToko.trim(),
-        qrisMerchantName: qrisMerchantName.trim(),
-        qrisImageUrl: qrisImageUrl.trim(),
-        bankName: bankName.trim(),
-        bankAccountNumber: bankAccountNumber.trim(),
-        bankAccountHolder: bankAccountHolder.trim()
+        namaToko: String(namaToko || '').trim(),
+        kontak: String(kontak || '').trim(),
+        alamatToko: String(alamatToko || '').trim(),
+        qrisMerchantName: String(qrisMerchantName || '').trim(),
+        qrisImageUrl: String(qrisImageUrl || '').trim(),
+        bankName: String(bankName || '').trim(),
+        bankAccountNumber: String(bankAccountNumber || '').trim(),
+        bankAccountHolder: String(bankAccountHolder || '').trim()
       };
       await updateStoreSettings(updated);
       onSettingsUpdated(updated);

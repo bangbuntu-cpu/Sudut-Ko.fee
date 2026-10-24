@@ -59,18 +59,22 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products }) => {
 
   const handleOpenEdit = (p: Product) => {
     setEditingProduct(p);
-    setNama(p.nama);
-    setKategori(p.kategori);
+    setNama(String(p.nama || ''));
+    setKategori(String(p.kategori || 'Signature'));
     setHarga(p.harga);
     setStok(p.stok);
-    setGambar(p.gambar);
-    setDeskripsi(p.deskripsi);
+    setGambar(String(p.gambar || ''));
+    setDeskripsi(String(p.deskripsi || ''));
     setShowModal(true);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nama.trim() || harga === '' || stok === '') {
+    const cleanNama = String(nama || '').trim();
+    const cleanGambar = String(gambar || '').trim();
+    const cleanDeskripsi = String(deskripsi || '').trim();
+
+    if (!cleanNama || harga === '' || stok === '') {
       showToast('Mohon lengkapi semua data produk', 'warning');
       return;
     }
@@ -79,24 +83,24 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products }) => {
     try {
       if (editingProduct) {
         await updateProduct(editingProduct.id, {
-          nama: nama.trim(),
+          nama: cleanNama,
           kategori,
           harga: Number(harga),
           stok: Number(stok),
-          gambar: gambar.trim() || 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?q=80&w=600&auto=format&fit=crop',
-          deskripsi: deskripsi.trim()
+          gambar: cleanGambar || 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?q=80&w=600&auto=format&fit=crop',
+          deskripsi: cleanDeskripsi
         });
-        showToast(`Produk "${nama}" berhasil diperbarui`, 'success');
+        showToast(`Produk "${cleanNama}" berhasil diperbarui`, 'success');
       } else {
         await addProduct({
-          nama: nama.trim(),
+          nama: cleanNama,
           kategori,
           harga: Number(harga),
           stok: Number(stok),
-          gambar: gambar.trim() || 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?q=80&w=600&auto=format&fit=crop',
-          deskripsi: deskripsi.trim()
+          gambar: cleanGambar || 'https://images.unsplash.com/photo-1510591509098-f4fdc6d0ff04?q=80&w=600&auto=format&fit=crop',
+          deskripsi: cleanDeskripsi
         });
-        showToast(`Produk "${nama}" berhasil ditambahkan ke katalog`, 'success');
+        showToast(`Produk "${cleanNama}" berhasil ditambahkan ke katalog`, 'success');
       }
       setShowModal(false);
     } catch (err: unknown) {

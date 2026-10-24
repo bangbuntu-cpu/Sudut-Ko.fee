@@ -55,14 +55,17 @@ export const AuthModal: React.FC<AuthModalProps> = ({
         showToast('Berhasil masuk ke SUDUT KO.FEE!', 'success');
         if (onClose) onClose();
       } else {
-        if (!nama.trim()) {
+        const cleanNama = String(nama || '').trim();
+        const cleanEmail = String(email || '').trim();
+
+        if (!cleanNama) {
           setErrorMessage('Nama lengkap wajib diisi');
           setLoading(false);
           return;
         }
 
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email.trim())) {
+        if (!emailRegex.test(cleanEmail)) {
           setErrorMessage('Format email tidak valid (contoh: user@domain.com)');
           setLoading(false);
           return;

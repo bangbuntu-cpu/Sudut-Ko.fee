@@ -58,9 +58,9 @@ export function getStatusBadge(status: string) {
   }
 }
 
-export function getDirectImageUrl(url?: string): string {
+export function getDirectImageUrl(url?: unknown): string {
   if (!url) return '';
-  const trimmed = url.trim();
+  const trimmed = String(url).trim();
   const match = trimmed.match(/\/file\/d\/([a-zA-Z0-9_-]+)/) || trimmed.match(/[?&]id=([a-zA-Z0-9_-]+)/);
   if (match && match[1]) {
     const fileId = match[1];
