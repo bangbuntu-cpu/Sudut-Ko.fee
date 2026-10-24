@@ -264,7 +264,7 @@ export const AdminMembers: React.FC<AdminMembersProps> = ({
             title="Sinkronkan data dengan Google Spreadsheet"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-            <span>{isSyncing ? 'Sinkronisasi...' : 'Sinkron Spreadsheet'}</span>
+            <span>{isSyncing ? 'Sinkronisasi...' : 'Sinkronkan data'}</span>
           </button>
 
           <button

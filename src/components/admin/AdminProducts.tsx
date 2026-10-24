@@ -166,7 +166,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products }) => {
             title="Tarik data terbaru dari Google Spreadsheet"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-            <span>{isSyncing ? 'Sinkron...' : 'Sinkron Spreadsheet'}</span>
+            <span>{isSyncing ? 'Sinkronisasi...' : 'Sinkronkan data'}</span>
           </button>
 
           <button

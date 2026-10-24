@@ -273,6 +273,17 @@ function setupSheets() {
           'AYU KUSUMA AIN PUTRI ARDIAN'
         ]
       ]
+    },
+    {
+      name: 'Additionals',
+      headers: ['id', 'nama', 'harga', 'keterangan', 'badge', 'updatedAt'],
+      initRows: [
+        ['addon_espresso', 'Espresso', 4000, 'Ekstra 1 shot Espresso bold Arabika', 'Extra Shot', new Date().toISOString()],
+        ['addon_seasalt', 'Seasalt cream', 5000, 'Topping krim gurih lembut khas Sudut Ko.fee', 'Topping', new Date().toISOString()],
+        ['addon_oatmilk', 'Oatmilk', 6000, 'Ganti atau tambah susu gandum oat creamy ramah nabati', 'Plant Based', new Date().toISOString()],
+        ['addon_almond', 'Almond Milk', 6000, 'Ganti atau tambah susu almond dengan aroma nutty', 'Plant Based', new Date().toISOString()],
+        ['addon_upsize', 'Upsize', 4000, 'Upgrade cup ke ukuran Large untuk porsi lebih puas', 'Large Cup', new Date().toISOString()]
+      ]
     }
   ];
 
@@ -321,8 +332,13 @@ function doGet(e) {
         rewards: getSheetDataAsObjects('Rewards'),
         pointHistory: getSheetDataAsObjects('PointHistory'),
         redemptions: getSheetDataAsObjects('Redemptions'),
+        additionals: getSheetDataAsObjects('Additionals'),
         settings: getSettingsObject()
       });
+    }
+
+    if (action === 'getAdditionals') {
+      return jsonResponse({ success: true, data: getSheetDataAsObjects('Additionals') });
     }
 
     if (action === 'getProducts') {
@@ -444,6 +460,11 @@ function doPost(e) {
     // 12. Update Pengaturan Toko
     if (action === 'updateSettings') {
       return jsonResponse(handleUpdateSettings(payload.settings || payload));
+    }
+
+    // 13. Simpan / Update Item Additional
+    if (action === 'saveAdditionals' || action === 'updateAdditionals') {
+      return jsonResponse(handleSaveAdditionals(payload));
     }
 
     // 13. Pembersihan Data Demo
@@ -1144,6 +1165,63 @@ function getSettingsObject() {
   }
 
   return settings;
+}
+
+function handleSaveAdditionals(payload) {
+  const ss = getSS();
+  var sheet = ss.getSheetByName('Additionals');
+  if (!sheet) {
+    setupSheets();
+    sheet = ss.getSheetByName('Additionals');
+  }
+
+  const items = Array.isArray(payload.additionals)
+    ? payload.additionals
+    : payload.additional
+    ? [payload.additional]
+    : [];
+  const now = new Date().toISOString();
+
+  items.forEach(function (item) {
+    const id = item.id;
+    if (!id) return;
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const idIdx = headers.indexOf('id');
+    const namaIdx = headers.indexOf('nama');
+    const hargaIdx = headers.indexOf('harga');
+    const ketIdx = headers.indexOf('keterangan');
+    const badgeIdx = headers.indexOf('badge');
+    const updatedIdx = headers.indexOf('updatedAt');
+
+    var existingRow = -1;
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][idIdx] === id) {
+        existingRow = i + 1;
+        break;
+      }
+    }
+
+    if (existingRow !== -1) {
+      if (namaIdx !== -1 && item.nama) sheet.getRange(existingRow, namaIdx + 1).setValue(item.nama);
+      if (hargaIdx !== -1 && item.harga !== undefined)
+        sheet.getRange(existingRow, hargaIdx + 1).setValue(Number(item.harga));
+      if (ketIdx !== -1 && item.keterangan) sheet.getRange(existingRow, ketIdx + 1).setValue(item.keterangan);
+      if (badgeIdx !== -1 && item.badge) sheet.getRange(existingRow, badgeIdx + 1).setValue(item.badge);
+      if (updatedIdx !== -1) sheet.getRange(existingRow, updatedIdx + 1).setValue(now);
+    } else {
+      sheet.appendRow([
+        id,
+        item.nama || '',
+        Number(item.harga) || 0,
+        item.keterangan || '',
+        item.badge || '',
+        now
+      ]);
+    }
+  });
+
+  return { success: true, message: 'Data additionals berhasil diperbarui' };
 }
 
 function jsonResponse(data) {

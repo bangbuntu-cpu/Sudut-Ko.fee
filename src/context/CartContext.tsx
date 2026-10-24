@@ -6,7 +6,7 @@ import {
   StoreSettings,
   getAdditionalOptions
 } from '../types';
-import { subscribeStoreSettings } from '../services/dbService';
+import { subscribeStoreSettings, subscribeAdditionals, getStoredAdditionals } from '../services/dbService';
 
 export interface CartItem {
   product: Product;
@@ -36,17 +36,34 @@ const CART_STORAGE_KEY = 'sudutkofee_cart_v1';
 
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [storeSettings, setStoreSettings] = useState<StoreSettings | undefined>(undefined);
+  const [additionalsList, setAdditionalsList] = useState<AdditionalOption[]>(getStoredAdditionals());
 
   useEffect(() => {
-    const unsub = subscribeStoreSettings((settings) => {
+    const unsubSettings = subscribeStoreSettings((settings) => {
       setStoreSettings(settings);
     });
-    return () => unsub();
+    const unsubAdditionals = subscribeAdditionals((list) => {
+      if (Array.isArray(list) && list.length > 0) {
+        setAdditionalsList(list);
+      }
+    });
+    return () => {
+      unsubSettings();
+      unsubAdditionals();
+    };
   }, []);
 
   const additionalOptions = useMemo(() => {
-    return getAdditionalOptions(storeSettings);
-  }, [storeSettings]);
+    return additionalsList.map((opt) => {
+      let customPrice = opt.harga;
+      if (opt.id === 'addon_espresso' && storeSettings?.hargaEspresso) customPrice = storeSettings.hargaEspresso;
+      if (opt.id === 'addon_seasalt' && storeSettings?.hargaSeasalt) customPrice = storeSettings.hargaSeasalt;
+      if (opt.id === 'addon_oatmilk' && storeSettings?.hargaOatmilk) customPrice = storeSettings.hargaOatmilk;
+      if (opt.id === 'addon_almond' && storeSettings?.hargaAlmond) customPrice = storeSettings.hargaAlmond;
+      if (opt.id === 'addon_upsize' && storeSettings?.hargaUpsize) customPrice = storeSettings.hargaUpsize;
+      return { ...opt, harga: customPrice };
+    });
+  }, [additionalsList, storeSettings]);
 
   const [items, setItems] = useState<CartItem[]>(() => {
     try {

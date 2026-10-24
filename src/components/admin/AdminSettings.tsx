@@ -11,10 +11,11 @@ import {
   QrCode,
   CreditCard
 } from 'lucide-react';
-import { StoreSettings } from '../../types';
+import { StoreSettings, AdditionalOption } from '../../types';
 import {
   getStoreSettings,
-  updateStoreSettings
+  updateStoreSettings,
+  updateAdditionalPrices
 } from '../../services/dbService';
 import { formatRupiah, calculatePoints } from '../../utils/format';
 import { useToast } from '../../context/ToastContext';
@@ -96,9 +97,48 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({
         hargaAlmond: Number(hargaAlmond) || 6000,
         hargaUpsize: Number(hargaUpsize) || 4000
       };
+      const updatedAdditionals: AdditionalOption[] = [
+        {
+          id: 'addon_espresso',
+          nama: 'Espresso',
+          harga: Number(hargaEspresso) || 4000,
+          keterangan: 'Ekstra 1 shot Espresso bold Arabika',
+          badge: 'Extra Shot'
+        },
+        {
+          id: 'addon_seasalt',
+          nama: 'Seasalt cream',
+          harga: Number(hargaSeasalt) || 5000,
+          keterangan: 'Topping krim gurih lembut khas Sudut Ko.fee',
+          badge: 'Topping'
+        },
+        {
+          id: 'addon_oatmilk',
+          nama: 'Oatmilk',
+          harga: Number(hargaOatmilk) || 6000,
+          keterangan: 'Ganti atau tambah susu gandum oat creamy ramah nabati',
+          badge: 'Plant Based'
+        },
+        {
+          id: 'addon_almond',
+          nama: 'Almond Milk',
+          harga: Number(hargaAlmond) || 6000,
+          keterangan: 'Ganti atau tambah susu almond dengan aroma nutty',
+          badge: 'Plant Based'
+        },
+        {
+          id: 'addon_upsize',
+          nama: 'Upsize',
+          harga: Number(hargaUpsize) || 4000,
+          keterangan: 'Upgrade cup ke ukuran Large untuk porsi lebih puas',
+          badge: 'Large Cup'
+        }
+      ];
+
       await updateStoreSettings(updated);
+      await updateAdditionalPrices(updatedAdditionals);
       onSettingsUpdated(updated);
-      showToast('Pengaturan toko & harga item additional berhasil diperbarui!', 'success');
+      showToast('Pengaturan toko & harga item additional berhasil disimpan ke Spreadsheet!', 'success');
     } catch (err: unknown) {
       showToast(err instanceof Error ? err.message : 'Gagal menyimpan pengaturan', 'error');
     } finally {

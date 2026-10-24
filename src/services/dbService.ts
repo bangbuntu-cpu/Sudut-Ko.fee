@@ -8,7 +8,9 @@ import {
   PaymentMethod,
   PointHistory,
   Redemption,
-  StoreSettings
+  StoreSettings,
+  AdditionalOption,
+  ADDITIONAL_OPTIONS
 } from '../types';
 import { INITIAL_PRODUCTS, INITIAL_REWARDS, DEFAULT_SETTINGS } from './seedData';
 
@@ -30,6 +32,7 @@ const STORAGE_KEYS = {
   POINT_HISTORY: 'sudutkofee_sheet_point_history_v2',
   REDEMPTIONS: 'sudutkofee_sheet_redemptions_v2',
   SETTINGS: 'sudutkofee_sheet_settings_v2',
+  ADDITIONALS: 'sudutkofee_sheet_additionals_v2',
   SCRIPT_URL: 'sudutkofee_sheet_api_url'
 };
 
@@ -67,7 +70,8 @@ const listeners: { [key: string]: Set<ListenerCallback> } = {
   users: new Set(),
   settings: new Set(),
   pointHistory: new Set(),
-  redemptions: new Set()
+  redemptions: new Set(),
+  additionals: new Set()
 };
 
 function notify(key: string) {
@@ -112,9 +116,14 @@ let cacheRewards: Reward[] = [];
 let cachePointHistory: PointHistory[] = [];
 let cacheRedemptions: Redemption[] = [];
 let cacheSettings: StoreSettings = DEFAULT_SETTINGS;
+let cacheAdditionals: AdditionalOption[] = getStored<AdditionalOption[]>(
+  STORAGE_KEYS.ADDITIONALS,
+  ADDITIONAL_OPTIONS
+);
 
 function initDatabaseState() {
   cacheSettings = getStored<StoreSettings>(STORAGE_KEYS.SETTINGS, DEFAULT_SETTINGS);
+  cacheAdditionals = getStored<AdditionalOption[]>(STORAGE_KEYS.ADDITIONALS, ADDITIONAL_OPTIONS);
 
   const storedProducts = getStored<Product[]>(STORAGE_KEYS.PRODUCTS, []);
   if (storedProducts.length === 0) {
@@ -328,6 +337,18 @@ export async function syncWithSpreadsheet(): Promise<boolean> {
         setStored(STORAGE_KEYS.REDEMPTIONS, cacheRedemptions);
         notify('redemptions');
       }
+      if (Array.isArray(json.additionals) && json.additionals.length > 0) {
+        cacheAdditionals = json.additionals.map((a: any) => ({
+          id: String(a.id || ''),
+          nama: String(a.nama || ''),
+          harga: Number(a.harga) || 0,
+          keterangan: String(a.keterangan || ''),
+          badge: String(a.badge || '')
+        }));
+        setStored(STORAGE_KEYS.ADDITIONALS, cacheAdditionals);
+        notify('additionals');
+      }
+
       if (json.settings && typeof json.settings === 'object') {
         let cleanContact = String(json.settings.kontak ?? '');
         if (cleanContact === '#ERROR!' || cleanContact === '#VALUE!' || cleanContact === 'undefined') {
@@ -393,6 +414,29 @@ export async function updateStoreSettings(newSettings: Partial<StoreSettings>): 
   notify('settings');
 
   await postToSheet({ action: 'updateSettings', settings: newSettings });
+}
+
+// ==================== ADDITIONALS ====================
+export function getStoredAdditionals(): AdditionalOption[] {
+  return cacheAdditionals;
+}
+
+export function subscribeAdditionals(callback: (additionals: AdditionalOption[]) => void): () => void {
+  callback(cacheAdditionals);
+  const cb = () => callback(cacheAdditionals);
+  listeners.additionals.add(cb);
+  return () => {
+    listeners.additionals.delete(cb);
+  };
+}
+
+export async function updateAdditionalPrices(newAdditionals: AdditionalOption[]): Promise<void> {
+  cacheAdditionals = newAdditionals;
+  setStored(STORAGE_KEYS.ADDITIONALS, cacheAdditionals);
+  notify('additionals');
+
+  // Direct persistence to Google Spreadsheet Additionals sheet
+  await postToSheet({ action: 'saveAdditionals', additionals: newAdditionals });
 }
 
 // ==================== USERS & MEMBERS ====================
