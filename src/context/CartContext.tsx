@@ -53,17 +53,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
   }, []);
 
-  const additionalOptions = useMemo(() => {
-    return additionalsList.map((opt) => {
-      let customPrice = opt.harga;
-      if (opt.id === 'addon_espresso' && storeSettings?.hargaEspresso) customPrice = storeSettings.hargaEspresso;
-      if (opt.id === 'addon_seasalt' && storeSettings?.hargaSeasalt) customPrice = storeSettings.hargaSeasalt;
-      if (opt.id === 'addon_oatmilk' && storeSettings?.hargaOatmilk) customPrice = storeSettings.hargaOatmilk;
-      if (opt.id === 'addon_almond' && storeSettings?.hargaAlmond) customPrice = storeSettings.hargaAlmond;
-      if (opt.id === 'addon_upsize' && storeSettings?.hargaUpsize) customPrice = storeSettings.hargaUpsize;
-      return { ...opt, harga: customPrice };
-    });
-  }, [additionalsList, storeSettings]);
+  const additionalOptions = additionalsList;
 
   const [items, setItems] = useState<CartItem[]>(() => {
     try {

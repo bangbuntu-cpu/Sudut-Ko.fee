@@ -15,7 +15,9 @@ import { StoreSettings, AdditionalOption } from '../../types';
 import {
   getStoreSettings,
   updateStoreSettings,
-  updateAdditionalPrices
+  updateAdditionalPrices,
+  subscribeAdditionals,
+  getStoredAdditionals
 } from '../../services/dbService';
 import { formatRupiah, calculatePoints } from '../../utils/format';
 import { useToast } from '../../context/ToastContext';
@@ -44,16 +46,40 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({
   const [bankAccountHolder, setBankAccountHolder] = useState(currentSettings.bankAccountHolder || 'PT SUDUT KO.FEE NUSANTARA');
 
   // Additional Item Prices
-  const [hargaEspresso, setHargaEspresso] = useState<number>(currentSettings.hargaEspresso || 4000);
-  const [hargaSeasalt, setHargaSeasalt] = useState<number>(currentSettings.hargaSeasalt || 5000);
-  const [hargaOatmilk, setHargaOatmilk] = useState<number>(currentSettings.hargaOatmilk || 6000);
-  const [hargaAlmond, setHargaAlmond] = useState<number>(currentSettings.hargaAlmond || 6000);
-  const [hargaUpsize, setHargaUpsize] = useState<number>(currentSettings.hargaUpsize || 4000);
+  const [additionalsList, setAdditionalsList] = useState<AdditionalOption[]>(getStoredAdditionals());
+  const [hargaEspresso, setHargaEspresso] = useState<number>(4000);
+  const [hargaSeasalt, setHargaSeasalt] = useState<number>(5000);
+  const [hargaOatmilk, setHargaOatmilk] = useState<number>(6000);
+  const [hargaAlmond, setHargaAlmond] = useState<number>(6000);
+  const [hargaUpsize, setHargaUpsize] = useState<number>(4000);
 
   const [isSaving, setIsSaving] = useState(false);
 
   // Simulation calculator
   const [simulasiBelanja, setSimulasiBelanja] = useState<number>(50000);
+
+  useEffect(() => {
+    const unsub = subscribeAdditionals((list) => {
+      if (Array.isArray(list) && list.length > 0) {
+        setAdditionalsList(list);
+      }
+    });
+    return () => unsub();
+  }, []);
+
+  useEffect(() => {
+    const esp = additionalsList.find((a) => a.id === 'addon_espresso')?.harga;
+    const sea = additionalsList.find((a) => a.id === 'addon_seasalt')?.harga;
+    const oat = additionalsList.find((a) => a.id === 'addon_oatmilk')?.harga;
+    const alm = additionalsList.find((a) => a.id === 'addon_almond')?.harga;
+    const upz = additionalsList.find((a) => a.id === 'addon_upsize')?.harga;
+
+    if (esp !== undefined) setHargaEspresso(esp);
+    if (sea !== undefined) setHargaSeasalt(sea);
+    if (oat !== undefined) setHargaOatmilk(oat);
+    if (alm !== undefined) setHargaAlmond(alm);
+    if (upz !== undefined) setHargaUpsize(upz);
+  }, [additionalsList]);
 
   useEffect(() => {
     setNilaiPerPoin(Number(currentSettings.nilaiPerPoin) || 13000);
@@ -65,11 +91,6 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({
     setBankName(String(currentSettings.bankName || 'BCA Virtual Account'));
     setBankAccountNumber(String(currentSettings.bankAccountNumber || ''));
     setBankAccountHolder(String(currentSettings.bankAccountHolder || ''));
-    setHargaEspresso(Number(currentSettings.hargaEspresso) || 4000);
-    setHargaSeasalt(Number(currentSettings.hargaSeasalt) || 5000);
-    setHargaOatmilk(Number(currentSettings.hargaOatmilk) || 6000);
-    setHargaAlmond(Number(currentSettings.hargaAlmond) || 6000);
-    setHargaUpsize(Number(currentSettings.hargaUpsize) || 4000);
   }, [currentSettings]);
 
   const handleSaveSettings = async (e: React.FormEvent) => {
