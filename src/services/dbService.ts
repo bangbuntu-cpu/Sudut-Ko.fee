@@ -230,7 +230,7 @@ export async function syncWithSpreadsheet(): Promise<boolean> {
     if (!res.ok) return false;
     const json = await res.json();
     if (json && json.success) {
-      if (Array.isArray(json.products) && json.products.length > 0) {
+      if (Array.isArray(json.products)) {
         cacheProducts = json.products.map((p: any) => ({
           ...p,
           id: String(p.id ?? ''),
@@ -244,7 +244,7 @@ export async function syncWithSpreadsheet(): Promise<boolean> {
         setStored(STORAGE_KEYS.PRODUCTS, cacheProducts);
         notify('products');
       }
-      if (Array.isArray(json.rewards) && json.rewards.length > 0) {
+      if (Array.isArray(json.rewards)) {
         cacheRewards = json.rewards.map((r: any) => ({
           ...r,
           id: String(r.id ?? ''),
@@ -276,8 +276,8 @@ export async function syncWithSpreadsheet(): Promise<boolean> {
         setStored(STORAGE_KEYS.ORDERS, cacheOrders);
         notify('orders');
       }
-      if (Array.isArray(json.users) && json.users.length > 0) {
-        cacheUsers = json.users.map((u: any) => {
+      if (Array.isArray(json.users)) {
+        const parsedUsers = json.users.map((u: any) => {
           let cleanPhone = String(u.noHp ?? '');
           if (
             cleanPhone === '#ERROR!' ||
@@ -287,6 +287,15 @@ export async function syncWithSpreadsheet(): Promise<boolean> {
           ) {
             cleanPhone = u.email === ADMIN_EMAIL ? '+62 812-3456-7890' : '';
           }
+          const rawIsMember = u.isMember;
+          const isMemberBool = Boolean(
+            rawIsMember === true ||
+            rawIsMember === 1 ||
+            String(rawIsMember).toLowerCase() === 'true' ||
+            String(rawIsMember).toLowerCase() === 'yes' ||
+            String(rawIsMember).toLowerCase() === 'ya' ||
+            String(rawIsMember).toLowerCase() === '1'
+          );
           return {
             ...u,
             uid: String(u.uid ?? ''),
@@ -294,11 +303,18 @@ export async function syncWithSpreadsheet(): Promise<boolean> {
             email: String(u.email ?? ''),
             noHp: cleanPhone,
             alamat: String(u.alamat ?? ''),
-            role: (u.role === 'admin' ? 'admin' : 'user') as UserProfile['role'],
-            isMember: Boolean(u.isMember === true || u.isMember === 'TRUE' || u.isMember === 'true'),
+            role: (u.role === 'admin' || (u.email || '').toLowerCase() === ADMIN_EMAIL ? 'admin' : 'user') as UserProfile['role'],
+            isMember: isMemberBool,
             poin: Number(u.poin) || 0
           };
         });
+
+        // Ensure default admin profile is preserved if not present
+        if (!parsedUsers.some((u: UserProfile) => u.email === ADMIN_EMAIL)) {
+          parsedUsers.unshift(DEFAULT_ADMIN_PROFILE);
+        }
+
+        cacheUsers = parsedUsers;
         setStored(STORAGE_KEYS.USERS, cacheUsers);
         notify('users');
       }

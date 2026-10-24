@@ -54,20 +54,20 @@ function MainAppContent() {
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [storeSettings, setStoreSettings] = useState<StoreSettings>(DEFAULT_SETTINGS);
 
-  // Synchronize live data from Google Spreadsheet on initial load
+  // Synchronize live data from Google Spreadsheet on initial load and window focus
   useEffect(() => {
     syncWithSpreadsheet().catch((err) => {
       console.warn('Initial spreadsheet sync error:', err);
     });
-  }, []);
 
-  // Auto-seed products & purge demo data when admin is authenticated
-  useEffect(() => {
-    if (currentUser && isAdmin) {
-      cleanupAllDemoData().catch(() => {});
-      seedDatabaseIfEmpty().catch(() => {});
-    }
-  }, [currentUser, isAdmin]);
+    const handleFocus = () => {
+      syncWithSpreadsheet().catch(() => {});
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, []);
 
   // Subscribe to public catalog data
   useEffect(() => {

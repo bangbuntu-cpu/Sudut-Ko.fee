@@ -6,10 +6,11 @@ import {
   Trash2,
   Award,
   X,
-  Search
+  Search,
+  RefreshCw
 } from 'lucide-react';
 import { Reward } from '../../types';
-import { addReward, updateReward, deleteReward } from '../../services/dbService';
+import { addReward, updateReward, deleteReward, syncWithSpreadsheet } from '../../services/dbService';
 import { useToast } from '../../context/ToastContext';
 import { ConfirmModal } from '../common/ConfirmModal';
 
@@ -21,6 +22,7 @@ export const AdminRewards: React.FC<AdminRewardsProps> = ({ rewards }) => {
   const { showToast } = useToast();
 
   const [search, setSearch] = useState('');
+  const [isSyncing, setIsSyncing] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [editingReward, setEditingReward] = useState<Reward | null>(null);
 
@@ -125,13 +127,36 @@ export const AdminRewards: React.FC<AdminRewardsProps> = ({ rewards }) => {
           </p>
         </div>
 
-        <button
-          onClick={handleOpenAdd}
-          className="px-4 py-2.5 rounded-2xl bg-[#4A2E18] hover:bg-[#382110] text-[#FAF5EE] text-xs font-bold shadow-md transition flex items-center gap-2"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Tambah Reward Baru</span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={async () => {
+              setIsSyncing(true);
+              try {
+                await syncWithSpreadsheet();
+                showToast('Daftar reward berhasil disinkronkan dengan Google Spreadsheet!', 'success');
+              } catch {
+                showToast('Gagal menyinkronkan dengan spreadsheet', 'error');
+              } finally {
+                setIsSyncing(false);
+              }
+            }}
+            disabled={isSyncing}
+            className="px-3.5 py-2.5 rounded-2xl border border-stone-200 bg-white hover:bg-stone-50 text-stone-700 text-xs font-bold transition flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            title="Tarik data reward terbaru dari Google Spreadsheet"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
+            <span>{isSyncing ? 'Sinkron...' : 'Sinkron Spreadsheet'}</span>
+          </button>
+
+          <button
+            onClick={handleOpenAdd}
+            className="px-4 py-2.5 rounded-2xl bg-[#4A2E18] hover:bg-[#382110] text-[#FAF5EE] text-xs font-bold shadow-md transition flex items-center gap-2 cursor-pointer"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Tambah Reward Baru</span>
+          </button>
+        </div>
       </div>
 
       {/* Search */}
