@@ -42,6 +42,13 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({
   const [bankAccountNumber, setBankAccountNumber] = useState(currentSettings.bankAccountNumber || '8000812990012345');
   const [bankAccountHolder, setBankAccountHolder] = useState(currentSettings.bankAccountHolder || 'PT SUDUT KO.FEE NUSANTARA');
 
+  // Additional Item Prices
+  const [hargaEspresso, setHargaEspresso] = useState<number>(currentSettings.hargaEspresso || 4000);
+  const [hargaSeasalt, setHargaSeasalt] = useState<number>(currentSettings.hargaSeasalt || 5000);
+  const [hargaOatmilk, setHargaOatmilk] = useState<number>(currentSettings.hargaOatmilk || 6000);
+  const [hargaAlmond, setHargaAlmond] = useState<number>(currentSettings.hargaAlmond || 6000);
+  const [hargaUpsize, setHargaUpsize] = useState<number>(currentSettings.hargaUpsize || 4000);
+
   const [isSaving, setIsSaving] = useState(false);
 
   // Simulation calculator
@@ -57,6 +64,11 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({
     setBankName(String(currentSettings.bankName || 'BCA Virtual Account'));
     setBankAccountNumber(String(currentSettings.bankAccountNumber || ''));
     setBankAccountHolder(String(currentSettings.bankAccountHolder || ''));
+    setHargaEspresso(Number(currentSettings.hargaEspresso) || 4000);
+    setHargaSeasalt(Number(currentSettings.hargaSeasalt) || 5000);
+    setHargaOatmilk(Number(currentSettings.hargaOatmilk) || 6000);
+    setHargaAlmond(Number(currentSettings.hargaAlmond) || 6000);
+    setHargaUpsize(Number(currentSettings.hargaUpsize) || 4000);
   }, [currentSettings]);
 
   const handleSaveSettings = async (e: React.FormEvent) => {
@@ -77,11 +89,16 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({
         qrisImageUrl: String(qrisImageUrl || '').trim(),
         bankName: String(bankName || '').trim(),
         bankAccountNumber: String(bankAccountNumber || '').trim(),
-        bankAccountHolder: String(bankAccountHolder || '').trim()
+        bankAccountHolder: String(bankAccountHolder || '').trim(),
+        hargaEspresso: Number(hargaEspresso) || 4000,
+        hargaSeasalt: Number(hargaSeasalt) || 5000,
+        hargaOatmilk: Number(hargaOatmilk) || 6000,
+        hargaAlmond: Number(hargaAlmond) || 6000,
+        hargaUpsize: Number(hargaUpsize) || 4000
       };
       await updateStoreSettings(updated);
       onSettingsUpdated(updated);
-      showToast('Pengaturan aturan poin, toko & metode pembayaran berhasil diperbarui!', 'success');
+      showToast('Pengaturan toko & harga item additional berhasil diperbarui!', 'success');
     } catch (err: unknown) {
       showToast(err instanceof Error ? err.message : 'Gagal menyimpan pengaturan', 'error');
     } finally {
@@ -303,6 +320,105 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({
                 placeholder="PT SUDUT KO.FEE NUSANTARA"
                 className="w-full px-3.5 py-2.5 rounded-xl border border-stone-300 bg-white text-xs sm:text-sm font-semibold"
               />
+            </div>
+          </div>
+        </div>
+
+        {/* Additional Item Prices Settings Box */}
+        <div className="bg-white p-5 sm:p-7 rounded-3xl border border-stone-200/90 shadow-xs space-y-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-10 h-10 rounded-2xl bg-amber-100 text-amber-900 flex items-center justify-center">
+              <Sparkles className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-extrabold text-stone-900">
+                Pengaturan Harga Item Additional &amp; Topping
+              </h2>
+              <p className="text-xs text-stone-500">
+                Atur nominal harga tambahan per porsi untuk tiap item additional yang dapat dipilih pelanggan di keranjang
+              </p>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs pt-2">
+            <div className="p-3 bg-stone-50/80 rounded-2xl border border-stone-200">
+              <label className="block font-bold text-stone-800 uppercase tracking-wider mb-1">
+                ☕ Extra Shot Espresso (Rp)
+              </label>
+              <input
+                type="number"
+                min={0}
+                step={500}
+                required
+                value={hargaEspresso}
+                onChange={(e) => setHargaEspresso(Number(e.target.value))}
+                className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white font-black text-amber-950 text-sm"
+              />
+              <span className="text-[10px] text-stone-400 mt-1 block">Harga default: Rp 4.000</span>
+            </div>
+
+            <div className="p-3 bg-stone-50/80 rounded-2xl border border-stone-200">
+              <label className="block font-bold text-stone-800 uppercase tracking-wider mb-1">
+                🌊 Seasalt Cream (Rp)
+              </label>
+              <input
+                type="number"
+                min={0}
+                step={500}
+                required
+                value={hargaSeasalt}
+                onChange={(e) => setHargaSeasalt(Number(e.target.value))}
+                className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white font-black text-amber-950 text-sm"
+              />
+              <span className="text-[10px] text-stone-400 mt-1 block">Harga default: Rp 5.000</span>
+            </div>
+
+            <div className="p-3 bg-stone-50/80 rounded-2xl border border-stone-200">
+              <label className="block font-bold text-stone-800 uppercase tracking-wider mb-1">
+                🌾 Oatmilk (Rp)
+              </label>
+              <input
+                type="number"
+                min={0}
+                step={500}
+                required
+                value={hargaOatmilk}
+                onChange={(e) => setHargaOatmilk(Number(e.target.value))}
+                className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white font-black text-amber-950 text-sm"
+              />
+              <span className="text-[10px] text-stone-400 mt-1 block">Harga default: Rp 6.000</span>
+            </div>
+
+            <div className="p-3 bg-stone-50/80 rounded-2xl border border-stone-200">
+              <label className="block font-bold text-stone-800 uppercase tracking-wider mb-1">
+                🌰 Almond Milk (Rp)
+              </label>
+              <input
+                type="number"
+                min={0}
+                step={500}
+                required
+                value={hargaAlmond}
+                onChange={(e) => setHargaAlmond(Number(e.target.value))}
+                className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white font-black text-amber-950 text-sm"
+              />
+              <span className="text-[10px] text-stone-400 mt-1 block">Harga default: Rp 6.000</span>
+            </div>
+
+            <div className="p-3 bg-stone-50/80 rounded-2xl border border-stone-200">
+              <label className="block font-bold text-stone-800 uppercase tracking-wider mb-1">
+                🥤 Upsize Large Cup (Rp)
+              </label>
+              <input
+                type="number"
+                min={0}
+                step={500}
+                required
+                value={hargaUpsize}
+                onChange={(e) => setHargaUpsize(Number(e.target.value))}
+                className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white font-black text-amber-950 text-sm"
+              />
+              <span className="text-[10px] text-stone-400 mt-1 block">Harga default: Rp 4.000</span>
             </div>
           </div>
         </div>

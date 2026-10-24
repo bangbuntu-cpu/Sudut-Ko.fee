@@ -41,7 +41,8 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     totalItems,
     toggleItemAdditional,
     addStandaloneAdditional,
-    getItemUnitPrice
+    getItemUnitPrice,
+    additionalOptions
   } = useCart();
   const { currentUser, isMember, isAdmin } = useAuth();
   const { showToast } = useToast();
@@ -159,7 +160,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                       const unitPrice = getItemUnitPrice(item);
                       const isStandaloneAddon = item.product.kategori === 'Additional';
                       const selectedAddons = (item.additionals || [])
-                        .map((id) => ADDITIONAL_OPTIONS.find((a) => a.id === id))
+                        .map((id) => additionalOptions.find((a) => a.id === id))
                         .filter(Boolean) as AdditionalOption[];
 
                       return (
@@ -252,7 +253,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
 
                               {/* Toggle Chips for Additional items */}
                               <div className="flex flex-wrap gap-1.5">
-                                {ADDITIONAL_OPTIONS.map((opt) => {
+                                {additionalOptions.map((opt) => {
                                   const isSelected = (item.additionals || []).includes(opt.id);
 
                                   return (
@@ -308,7 +309,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                     </div>
 
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {ADDITIONAL_OPTIONS.map((opt) => {
+                      {additionalOptions.map((opt) => {
                         const isAppliedToAny = items.some((i) =>
                           (i.additionals || []).includes(opt.id)
                         );

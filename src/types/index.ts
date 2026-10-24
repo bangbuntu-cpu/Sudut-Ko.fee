@@ -148,4 +148,50 @@ export interface StoreSettings {
   bankName?: string;
   bankAccountNumber?: string;
   bankAccountHolder?: string;
+  // Additional item prices
+  hargaEspresso?: number;
+  hargaSeasalt?: number;
+  hargaOatmilk?: number;
+  hargaAlmond?: number;
+  hargaUpsize?: number;
+}
+
+export function getAdditionalOptions(settings?: StoreSettings): AdditionalOption[] {
+  return [
+    {
+      id: 'addon_espresso',
+      nama: 'Espresso',
+      harga: settings?.hargaEspresso ?? 4000,
+      keterangan: 'Ekstra 1 shot Espresso bold Arabika',
+      badge: 'Extra Shot'
+    },
+    {
+      id: 'addon_seasalt',
+      nama: 'Seasalt cream',
+      harga: settings?.hargaSeasalt ?? 5000,
+      keterangan: 'Topping krim gurih lembut khas Sudut Ko.fee',
+      badge: 'Topping'
+    },
+    {
+      id: 'addon_oatmilk',
+      nama: 'Oatmilk',
+      harga: settings?.hargaOatmilk ?? 6000,
+      keterangan: 'Ganti atau tambah susu gandum oat creamy ramah nabati',
+      badge: 'Plant Based'
+    },
+    {
+      id: 'addon_almond',
+      nama: 'Almond Milk',
+      harga: settings?.hargaAlmond ?? 6000,
+      keterangan: 'Ganti atau tambah susu almond dengan aroma nutty',
+      badge: 'Plant Based'
+    },
+    {
+      id: 'addon_upsize',
+      nama: 'Upsize',
+      harga: settings?.hargaUpsize ?? 4000,
+      keterangan: 'Upgrade cup ke ukuran Large untuk porsi lebih puas',
+      badge: 'Large Cup'
+    }
+  ];
 }

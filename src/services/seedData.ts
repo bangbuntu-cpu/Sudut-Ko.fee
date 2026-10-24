@@ -107,5 +107,10 @@ export const DEFAULT_SETTINGS: StoreSettings = {
   qrisImageUrl: 'https://api.qrserver.com/v1/create-qr-code/?size=140x140&data=00020101021226580014ID.LINKAJA.WWW01189360091100223948515204581253033605802ID5910SUDUT KOFEE6007JAKARTA62070703A016304',
   bankName: 'BCA Virtual Account',
   bankAccountNumber: '8000812990012345',
-  bankAccountHolder: 'PT SUDUT KO.FEE NUSANTARA'
+  bankAccountHolder: 'PT SUDUT KO.FEE NUSANTARA',
+  hargaEspresso: 4000,
+  hargaSeasalt: 5000,
+  hargaOatmilk: 6000,
+  hargaAlmond: 6000,
+  hargaUpsize: 4000
 };

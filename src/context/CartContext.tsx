@@ -1,5 +1,12 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Product, OrderItem, ADDITIONAL_OPTIONS, AdditionalOption } from '../types';
+import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
+import {
+  Product,
+  OrderItem,
+  AdditionalOption,
+  StoreSettings,
+  getAdditionalOptions
+} from '../types';
+import { subscribeStoreSettings } from '../services/dbService';
 
 export interface CartItem {
   product: Product;
@@ -18,6 +25,7 @@ interface CartContextType {
   clearCart: () => void;
   totalItems: number;
   totalPrice: number;
+  additionalOptions: AdditionalOption[];
   getItemUnitPrice: (item: CartItem) => number;
   toOrderItems: () => OrderItem[];
 }
@@ -26,15 +34,20 @@ const CartContext = createContext<CartContextType | undefined>(undefined);
 
 const CART_STORAGE_KEY = 'sudutkofee_cart_v1';
 
-export const getItemUnitPrice = (item: CartItem): number => {
-  const addTotal = (item.additionals || []).reduce((sum, addId) => {
-    const opt = ADDITIONAL_OPTIONS.find((a) => a.id === addId);
-    return sum + (opt ? opt.harga : 0);
-  }, 0);
-  return item.product.harga + addTotal;
-};
-
 export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [storeSettings, setStoreSettings] = useState<StoreSettings | undefined>(undefined);
+
+  useEffect(() => {
+    const unsub = subscribeStoreSettings((settings) => {
+      setStoreSettings(settings);
+    });
+    return () => unsub();
+  }, []);
+
+  const additionalOptions = useMemo(() => {
+    return getAdditionalOptions(storeSettings);
+  }, [storeSettings]);
+
   const [items, setItems] = useState<CartItem[]>(() => {
     try {
       const saved = localStorage.getItem(CART_STORAGE_KEY);
@@ -52,13 +65,20 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [items]);
 
+  const getItemUnitPrice = (item: CartItem): number => {
+    const addTotal = (item.additionals || []).reduce((sum, addId) => {
+      const opt = additionalOptions.find((a) => a.id === addId);
+      return sum + (opt ? opt.harga : 0);
+    }, 0);
+    return item.product.harga + addTotal;
+  };
+
   const addToCart = (product: Product, quantity = 1, notes = '', additionals: string[] = []) => {
     setItems((prev) => {
       const existingIndex = prev.findIndex((item) => item.product.id === product.id);
       if (existingIndex > -1) {
         const next = [...prev];
         const newQty = Math.min(product.stok, next[existingIndex].quantity + quantity);
-        // Merge or replace additionals if provided
         const currentAdditionals = next[existingIndex].additionals || [];
         const mergedAdditionals = Array.from(new Set([...currentAdditionals, ...additionals]));
 
@@ -143,7 +163,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return items.map((item) => {
       const unitPrice = getItemUnitPrice(item);
       const addNames = (item.additionals || [])
-        .map((id) => ADDITIONAL_OPTIONS.find((a) => a.id === id)?.nama)
+        .map((id) => additionalOptions.find((a) => a.id === id)?.nama)
         .filter(Boolean);
       const displayName =
         addNames.length > 0
@@ -173,6 +193,7 @@ export const CartProvider: React.FC<{ children: React.ReactNode }> = ({ children
         clearCart,
         totalItems,
         totalPrice,
+        additionalOptions,
         getItemUnitPrice,
         toOrderItems
       }}

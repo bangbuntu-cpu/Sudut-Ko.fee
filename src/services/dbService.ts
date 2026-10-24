@@ -348,7 +348,12 @@ export async function syncWithSpreadsheet(): Promise<boolean> {
           qrisImageUrl: String(json.settings.qrisImageUrl || cacheSettings.qrisImageUrl),
           bankName: String(json.settings.bankName || cacheSettings.bankName),
           bankAccountNumber: cleanBankAcc,
-          bankAccountHolder: String(json.settings.bankAccountHolder || cacheSettings.bankAccountHolder)
+          bankAccountHolder: String(json.settings.bankAccountHolder || cacheSettings.bankAccountHolder),
+          hargaEspresso: Number(json.settings.hargaEspresso) || cacheSettings.hargaEspresso || 4000,
+          hargaSeasalt: Number(json.settings.hargaSeasalt) || cacheSettings.hargaSeasalt || 5000,
+          hargaOatmilk: Number(json.settings.hargaOatmilk) || cacheSettings.hargaOatmilk || 6000,
+          hargaAlmond: Number(json.settings.hargaAlmond) || cacheSettings.hargaAlmond || 6000,
+          hargaUpsize: Number(json.settings.hargaUpsize) || cacheSettings.hargaUpsize || 4000
         };
         setStored(STORAGE_KEYS.SETTINGS, cacheSettings);
         notify('settings');
