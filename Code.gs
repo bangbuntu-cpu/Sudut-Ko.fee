@@ -284,8 +284,8 @@ function setupSheets() {
       sheet = ss.insertSheet(cfg.name);
     }
 
-    // Set header jika kosong
-    if (sheet.getLastRowNum() === 0) {
+    // Set header jika sheet masih kosong
+    if (sheet.getLastRow() === 0) {
       sheet.appendRow(cfg.headers);
       var headerRange = sheet.getRange(1, 1, 1, cfg.headers.length);
       headerRange.setFontWeight('bold');
