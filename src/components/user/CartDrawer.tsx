@@ -67,42 +67,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     setShowCheckout(true);
   };
 
-  const handleQuickAddAdditional = (addon: AdditionalOption) => {
-    const drinkItems = items.filter((i) => i.product.kategori !== 'Additional');
-
-    if (drinkItems.length === 0) {
-      // No drinks in cart yet, add as standalone item
-      addStandaloneAdditional(addon);
-      showToast(`${addon.nama} dimasukkan ke keranjang`, 'success');
-      return;
-    }
-
-    if (drinkItems.length === 1) {
-      // Exactly 1 drink in cart, toggle on that drink
-      const target = drinkItems[0];
-      const isAlreadyAdded = (target.additionals || []).includes(addon.id);
-      toggleItemAdditional(target.product.id, addon.id);
-      showToast(
-        isAlreadyAdded
-          ? `${addon.nama} dihapus dari ${target.product.nama}`
-          : `${addon.nama} ditambahkan ke ${target.product.nama}!`,
-        'success'
-      );
-      return;
-    }
-
-    // Default for multiple drinks: toggle on first drink item
-    const firstDrink = drinkItems[0];
-    const isAlreadyAdded = (firstDrink.additionals || []).includes(addon.id);
-    toggleItemAdditional(firstDrink.product.id, addon.id);
-    showToast(
-      isAlreadyAdded
-        ? `${addon.nama} dihapus dari ${firstDrink.product.nama}`
-        : `${addon.nama} ditambahkan ke ${firstDrink.product.nama}!`,
-      'success'
-    );
-  };
-
   return (
     <>
       <div className="fixed inset-0 z-50 overflow-hidden bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
@@ -290,81 +254,6 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                         </div>
                       );
                     })}
-                  </div>
-
-                  {/* Dedicated Additional / Extra Topping Section before Payment */}
-                  <div className="bg-gradient-to-br from-amber-50 to-orange-50/50 rounded-2xl p-4 border border-amber-200/80 shadow-xs space-y-3 mt-4">
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="flex items-center gap-1.5">
-                          <Coffee className="w-4 h-4 text-amber-800" />
-                          <h3 className="text-xs font-black text-amber-950 uppercase tracking-wider">
-                            Mau Tambah Item Additional?
-                          </h3>
-                        </div>
-                        <p className="text-[11px] text-stone-600 mt-0.5">
-                          Tambahkan rasa &amp; topping spesial untuk minumanmu sebelum pembayaran:
-                        </p>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                      {additionalOptions.map((opt) => {
-                        const isAppliedToAny = items.some((i) =>
-                          (i.additionals || []).includes(opt.id)
-                        );
-
-                        return (
-                          <div
-                            key={opt.id}
-                            className={`p-2.5 rounded-xl border transition flex items-center justify-between gap-2 ${
-                              isAppliedToAny
-                                ? 'bg-amber-100/70 border-amber-300 shadow-2xs'
-                                : 'bg-white border-amber-100 hover:border-amber-300'
-                            }`}
-                          >
-                            <div className="min-w-0 flex-1">
-                              <div className="flex items-center gap-1.5">
-                                <span className="font-bold text-xs text-stone-900 truncate">
-                                  {opt.nama}
-                                </span>
-                                <span className="text-[9px] bg-amber-200/60 text-amber-900 px-1.5 py-0.2 rounded-md font-semibold">
-                                  {opt.badge}
-                                </span>
-                              </div>
-                              <div className="text-[10px] text-stone-500 truncate mt-0.5">
-                                {opt.keterangan}
-                              </div>
-                              <div className="text-xs font-extrabold text-amber-900 mt-0.5">
-                                +{formatRupiah(opt.harga)}
-                              </div>
-                            </div>
-
-                            <button
-                              type="button"
-                              onClick={() => handleQuickAddAdditional(opt)}
-                              className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 shrink-0 cursor-pointer ${
-                                isAppliedToAny
-                                  ? 'bg-amber-800 hover:bg-amber-900 text-white'
-                                  : 'bg-amber-100 hover:bg-amber-200 text-amber-900'
-                              }`}
-                            >
-                              {isAppliedToAny ? (
-                                <>
-                                  <Check className="w-3 h-3" />
-                                  <span>Aktif</span>
-                                </>
-                              ) : (
-                                <>
-                                  <Plus className="w-3 h-3" />
-                                  <span>Tambah</span>
-                                </>
-                              )}
-                            </button>
-                          </div>
-                        );
-                      })}
-                    </div>
                   </div>
                 </>
               )}

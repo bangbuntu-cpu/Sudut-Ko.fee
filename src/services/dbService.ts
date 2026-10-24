@@ -963,6 +963,23 @@ export function subscribeAllRedemptions(callback: (redemptions: Redemption[]) =>
   };
 }
 
+export async function updateRedemptionStatus(
+  id: string,
+  newStatus: 'Menunggu' | 'Selesai' | 'Dibatalkan'
+): Promise<void> {
+  const idx = cacheRedemptions.findIndex((r) => r.id === id);
+  if (idx !== -1) {
+    cacheRedemptions[idx] = {
+      ...cacheRedemptions[idx],
+      status: newStatus
+    };
+    setStored(STORAGE_KEYS.REDEMPTIONS, cacheRedemptions);
+    notify('redemptions');
+
+    await postToSheet({ action: 'updateRedemptionStatus', id, newStatus });
+  }
+}
+
 // ==================== AUTH CREDENTIAL HELPERS ====================
 export async function getCredentialForUser(uid: string) {
   return cacheCreds.find((c) => c.uid === uid) || null;

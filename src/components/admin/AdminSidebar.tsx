@@ -32,7 +32,7 @@ export const AdminSidebar: React.FC<AdminSidebarProps> = ({
     { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { id: 'orders', label: 'Kelola Pesanan', icon: ShoppingBag },
     { id: 'products', label: 'Produk Kopi', icon: Coffee },
-    { id: 'rewards', label: 'Produk Reward', icon: Gift },
+    { id: 'rewards', label: 'Penukaran & Reward', icon: Gift },
     { id: 'members', label: 'Kelola Member', icon: Users },
     { id: 'reports', label: 'Laporan Penjualan', icon: BarChart3 },
     { id: 'settings', label: 'Aturan Poin & Toko', icon: Settings },

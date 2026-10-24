@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   TrendingUp,
   Users,
@@ -8,9 +8,14 @@ import {
   Calendar,
   ArrowUpRight,
   Sparkles,
-  CheckCircle2
+  Gift,
+  Award,
+  Clock,
+  CheckCircle2,
+  XCircle
 } from 'lucide-react';
-import { Order, UserProfile, Product } from '../../types';
+import { Order, UserProfile, Product, Redemption } from '../../types';
+import { subscribeAllRedemptions } from '../../services/dbService';
 import { formatRupiah, formatDate, getStatusBadge } from '../../utils/format';
 
 interface AdminDashboardProps {
@@ -26,6 +31,15 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
   products,
   onNavigateToTab
 }) => {
+  const [redemptions, setRedemptions] = useState<Redemption[]>([]);
+
+  useEffect(() => {
+    const unsub = subscribeAllRedemptions((list) => {
+      setRedemptions(list);
+    });
+    return () => unsub();
+  }, []);
+
   // Metrics calculation
   const metrics = useMemo(() => {
     const totalSales = orders
@@ -102,13 +116,13 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </span>
           <h1 className="text-2xl font-black tracking-tight">Dashboard Manajemen SUDUT KO.FEE</h1>
           <p className="text-xs text-stone-300 mt-1">
-            Pantau arus transaksi kasir, online, anggota member, dan pergerakan stok secara realtime.
+            Pantau arus transaksi kasir, online, penukaran poin member, dan stok secara realtime.
           </p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={() => onNavigateToTab('orders')}
-            className="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow-md transition flex items-center gap-1.5"
+            className="px-4 py-2.5 rounded-xl bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold shadow-md transition flex items-center gap-1.5 cursor-pointer"
           >
             <ShoppingBag className="w-4 h-4" />
             <span>Lihat Semua Pesanan</span>
@@ -167,19 +181,23 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
           </div>
         </div>
 
-        {/* Card 4: Total Orders */}
-        <div className="bg-white p-5 rounded-3xl border border-stone-200/90 shadow-xs">
+        {/* Card 4: Point Redemptions */}
+        <div
+          onClick={() => onNavigateToTab('rewards')}
+          className="bg-white p-5 rounded-3xl border border-stone-200/90 shadow-xs cursor-pointer hover:border-amber-300 transition"
+        >
           <div className="flex items-center justify-between text-stone-500 mb-2">
-            <span className="text-xs font-bold uppercase tracking-wider">Total Pesanan</span>
-            <div className="w-9 h-9 rounded-xl bg-purple-50 text-purple-700 flex items-center justify-center">
-              <ShoppingBag className="w-5 h-5" />
+            <span className="text-xs font-bold uppercase tracking-wider">Penukaran Poin</span>
+            <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-900 flex items-center justify-center">
+              <Gift className="w-5 h-5" />
             </div>
           </div>
           <div className="text-xl sm:text-2xl font-black text-stone-900">
-            {metrics.totalOrdersCount}
+            {redemptions.length} Klaim
           </div>
-          <div className="text-[11px] text-stone-500 font-semibold mt-1">
-            Online &amp; Kasir Offline
+          <div className="text-[11px] text-amber-800 font-bold mt-1 flex items-center gap-1">
+            <Award className="w-3.5 h-3.5 text-amber-700" />
+            <span>Klik untuk kelola penukaran</span>
           </div>
         </div>
       </div>
@@ -193,55 +211,45 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
               <h2 className="text-base font-extrabold text-stone-900">Tren Penjualan 7 Hari Terakhir</h2>
               <p className="text-xs text-stone-500 mt-0.5">Pendapatan harian dari pesanan aktif</p>
             </div>
-            <div className="text-xs font-bold text-amber-900 bg-amber-100 px-3 py-1 rounded-full">
-              7 Hari Terakhir
-            </div>
           </div>
 
-          {/* Bar Chart Visualization */}
-          <div className="h-48 sm:h-56 flex items-end justify-between gap-2 pt-6 pb-2 border-b border-stone-100">
-            {metrics.last7Days.map((day) => {
-              const heightPercent = Math.max(8, Math.round((day.amount / metrics.maxDayAmount) * 100));
-
+          <div className="h-48 flex items-end gap-3 sm:gap-6 pt-6 pb-2 px-2 border-b border-stone-100">
+            {metrics.last7Days.map((d, i) => {
+              const heightPercent = Math.max(8, Math.round((d.amount / metrics.maxDayAmount) * 100));
               return (
-                <div key={day.date} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group">
-                  <div className="opacity-0 group-hover:opacity-100 transition-opacity bg-stone-900 text-amber-200 text-[10px] font-bold px-2 py-1 rounded shadow -mb-1 pointer-events-none whitespace-nowrap z-10">
-                    {formatRupiah(day.amount)} ({day.count} order)
+                <div key={i} className="flex-1 flex flex-col items-center gap-2 h-full justify-end group relative">
+                  {/* Tooltip */}
+                  <div className="absolute -top-10 opacity-0 group-hover:opacity-100 transition bg-stone-900 text-white text-[10px] font-bold py-1 px-2 rounded-lg pointer-events-none whitespace-nowrap shadow-md z-10">
+                    {formatRupiah(d.amount)} ({d.count} pesanan)
                   </div>
+
                   <div
                     style={{ height: `${heightPercent}%` }}
-                    className="w-full max-w-[42px] bg-gradient-to-t from-[#4A2E18] to-amber-600 rounded-t-xl group-hover:from-amber-700 group-hover:to-amber-500 transition-all duration-300 relative shadow-xs"
+                    className="w-full bg-gradient-to-t from-amber-800 to-amber-600 rounded-t-xl transition-all duration-300 group-hover:from-amber-700 group-hover:to-amber-500"
                   />
-                  <span className="text-[11px] font-bold text-stone-600 uppercase">
-                    {day.label}
-                  </span>
+                  <span className="text-[11px] font-bold text-stone-500">{d.label}</span>
                 </div>
               );
             })}
           </div>
-
-          <div className="mt-3 flex items-center justify-between text-xs text-stone-500">
-            <span>Rata-rata: {formatRupiah(Math.round(metrics.totalSales / Math.max(1, orders.length)))} / order</span>
-            <span className="font-semibold text-stone-700">Skala Maksimum: {formatRupiah(metrics.maxDayAmount)}</span>
-          </div>
         </div>
 
-        {/* Bestseller Coffee Ranking (1 Col) */}
+        {/* Bestsellers Box */}
         <div className="bg-white p-5 sm:p-6 rounded-3xl border border-stone-200/90 shadow-xs flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2 mb-4">
+              <Coffee className="w-5 h-5 text-amber-800" />
               <h2 className="text-base font-extrabold text-stone-900">Produk Terlaris</h2>
-              <Coffee className="w-4 h-4 text-amber-700" />
             </div>
 
             {metrics.bestsellers.length === 0 ? (
-              <div className="py-12 text-center text-xs text-stone-400">
+              <p className="text-xs text-stone-400 italic py-6 text-center">
                 Belum ada data penjualan tercatat.
-              </div>
+              </p>
             ) : (
-              <div className="space-y-3.5">
+              <div className="space-y-3">
                 {metrics.bestsellers.map((item, idx) => {
-                  const maxCount = metrics.bestsellers[0].count || 1;
+                  const maxCount = metrics.bestsellers[0].count;
                   const percent = Math.round((item.count / maxCount) * 100);
 
                   return (
@@ -272,7 +280,7 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
 
           <button
             onClick={() => onNavigateToTab('reports')}
-            className="w-full mt-4 py-2.5 rounded-xl border border-stone-200 hover:bg-stone-50 text-xs font-bold text-stone-700 transition flex items-center justify-center gap-1.5"
+            className="w-full mt-4 py-2.5 rounded-xl border border-stone-200 hover:bg-stone-50 text-xs font-bold text-stone-700 transition flex items-center justify-center gap-1.5 cursor-pointer"
           >
             <span>Buka Laporan Penjualan Lengkap</span>
             <ArrowUpRight className="w-3.5 h-3.5" />
@@ -280,66 +288,151 @@ export const AdminDashboard: React.FC<AdminDashboardProps> = ({
         </div>
       </div>
 
-      {/* Recent Orders Table */}
-      <div className="bg-white p-5 sm:p-6 rounded-3xl border border-stone-200/90 shadow-xs">
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <h2 className="text-base font-extrabold text-stone-900">Pesanan Terbaru</h2>
-            <p className="text-xs text-stone-500">Aktivitas pesanan online dan kasir offline terkini</p>
+      {/* Grid for Recent Orders & Recent Point Redemptions */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Recent Orders Table (2 Cols) */}
+        <div className="lg:col-span-2 bg-white p-5 sm:p-6 rounded-3xl border border-stone-200/90 shadow-xs">
+          <div className="flex items-center justify-between mb-4">
+            <div>
+              <h2 className="text-base font-extrabold text-stone-900">Pesanan Terbaru</h2>
+              <p className="text-xs text-stone-500">Aktivitas pesanan online dan kasir offline terkini</p>
+            </div>
+            <button
+              onClick={() => onNavigateToTab('orders')}
+              className="text-xs font-bold text-amber-800 hover:text-amber-950 cursor-pointer"
+            >
+              Kelola Semua
+            </button>
           </div>
-          <button
-            onClick={() => onNavigateToTab('orders')}
-            className="text-xs font-bold text-amber-800 hover:text-amber-950"
-          >
-            Kelola Semua
-          </button>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="border-b border-stone-200 text-stone-400 font-bold uppercase tracking-wider">
+                  <th className="pb-3">ID &amp; Waktu</th>
+                  <th className="pb-3">Konsumen</th>
+                  <th className="pb-3">Item Kopi</th>
+                  <th className="pb-3">Total</th>
+                  <th className="pb-3">Sumber</th>
+                  <th className="pb-3">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-stone-100">
+                {orders.slice(0, 5).map((order) => {
+                  const badge = getStatusBadge(order.status);
+                  return (
+                    <tr key={order.id} className="hover:bg-stone-50 transition">
+                      <td className="py-3">
+                        <div className="font-bold text-stone-900">#{order.id.slice(0, 6)}</div>
+                        <div className="text-[10px] text-stone-400">{formatDate(order.createdAt)}</div>
+                      </td>
+                      <td className="py-3 font-semibold text-stone-800">
+                        {order.userName}
+                      </td>
+                      <td className="py-3 text-stone-600 max-w-[150px] truncate">
+                        {order.items?.map((i) => `${i.jumlah}x ${i.nama}`).join(', ')}
+                      </td>
+                      <td className="py-3 font-extrabold text-amber-900">
+                        {formatRupiah(order.total)}
+                      </td>
+                      <td className="py-3">
+                        <span
+                          className={`px-2 py-0.5 rounded-full text-[10px] font-bold uppercase ${
+                            order.sumber === 'offline'
+                              ? 'bg-purple-100 text-purple-900'
+                              : 'bg-blue-100 text-blue-900'
+                          }`}
+                        >
+                          {order.sumber}
+                        </span>
+                      </td>
+                      <td className="py-3">
+                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold ${badge.bg}`}>
+                          {order.status}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs">
-            <thead>
-              <tr className="border-b border-stone-200 text-stone-400 font-bold uppercase tracking-wider">
-                <th className="pb-3">ID &amp; Waktu</th>
-                <th className="pb-3">Konsumen</th>
-                <th className="pb-3">Item Kopi</th>
-                <th className="pb-3">Total</th>
-                <th className="pb-3">Sumber</th>
-                <th className="pb-3">Status</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-100">
-              {orders.slice(0, 5).map((order) => {
-                const badge = getStatusBadge(order.status);
-                return (
-                  <tr key={order.id} className="hover:bg-stone-50 transition">
-                    <td className="py-3">
-                      <div className="font-bold text-stone-900">#{order.id.slice(0, 6)}</div>
-                      <div className="text-[10px] text-stone-400">{formatDate(order.createdAt)}</div>
-                    </td>
-                    <td className="py-3 font-semibold text-stone-800">
-                      {order.userName}
-                    </td>
-                    <td className="py-3 text-stone-600">
-                      {order.items?.map((i) => `${i.jumlah}x ${i.nama}`).join(', ')}
-                    </td>
-                    <td className="py-3 font-bold text-amber-950">
-                      {formatRupiah(order.total)}
-                    </td>
-                    <td className="py-3">
-                      <span className="px-2 py-0.5 rounded-md text-[10px] font-bold uppercase bg-stone-100 text-stone-700">
-                        {order.sumber}
+        {/* Recent Point Redemptions Widget (1 Col) */}
+        <div className="bg-white p-5 sm:p-6 rounded-3xl border border-stone-200/90 shadow-xs flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Gift className="w-5 h-5 text-amber-800" />
+                <h2 className="text-base font-extrabold text-stone-900">Penukaran Poin Member</h2>
+              </div>
+              <button
+                onClick={() => onNavigateToTab('rewards')}
+                className="text-xs font-bold text-amber-800 hover:text-amber-950 cursor-pointer"
+              >
+                Lihat Semua
+              </button>
+            </div>
+
+            {redemptions.length === 0 ? (
+              <div className="text-center py-8">
+                <Gift className="w-10 h-10 text-stone-300 mx-auto mb-2" />
+                <p className="text-xs text-stone-500 font-medium">Belum ada penukaran poin dari konsumen.</p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {redemptions.slice(0, 5).map((rdm) => (
+                  <div
+                    key={rdm.id}
+                    className="p-3 bg-stone-50/80 rounded-2xl border border-stone-100 flex items-center justify-between gap-2"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="font-bold text-xs text-stone-900 truncate">
+                        {rdm.userName || 'Member'}
+                      </div>
+                      <div className="text-[11px] text-amber-900 font-semibold truncate flex items-center gap-1">
+                        <Gift className="w-3 h-3 shrink-0" />
+                        {rdm.namaReward}
+                      </div>
+                      <div className="text-[10px] text-stone-400 mt-0.5">
+                        {formatDate(rdm.createdAt)}
+                      </div>
+                    </div>
+
+                    <div className="text-right shrink-0">
+                      <span className="px-2 py-0.5 rounded-md text-[10px] font-black bg-amber-100 text-amber-950 block mb-1">
+                        -{rdm.poinDipakai} Poin
                       </span>
-                    </td>
-                    <td className="py-3">
-                      <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${badge.bg}`}>
-                        {badge.label}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+                      {rdm.status === 'Selesai' && (
+                        <span className="text-[10px] text-emerald-700 font-bold flex items-center justify-end gap-0.5">
+                          <CheckCircle2 className="w-3 h-3" /> Selesai
+                        </span>
+                      )}
+                      {rdm.status === 'Menunggu' && (
+                        <span className="text-[10px] text-amber-700 font-bold flex items-center justify-end gap-0.5">
+                          <Clock className="w-3 h-3" /> Menunggu
+                        </span>
+                      )}
+                      {rdm.status === 'Dibatalkan' && (
+                        <span className="text-[10px] text-red-700 font-bold flex items-center justify-end gap-0.5">
+                          <XCircle className="w-3 h-3" /> Batal
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <button
+            onClick={() => onNavigateToTab('rewards')}
+            className="w-full mt-4 py-2.5 rounded-xl border border-stone-200 hover:bg-stone-50 text-xs font-bold text-stone-700 transition flex items-center justify-center gap-1.5 cursor-pointer"
+          >
+            <span>Buka Riwayat Penukaran Lengkap</span>
+            <ArrowUpRight className="w-3.5 h-3.5" />
+          </button>
         </div>
       </div>
     </div>
