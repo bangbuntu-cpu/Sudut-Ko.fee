@@ -13,6 +13,7 @@ import { ProductCatalog } from './components/user/ProductCatalog';
 import { RewardsView } from './components/user/RewardsView';
 import { AccountView } from './components/user/AccountView';
 import { CartDrawer } from './components/user/CartDrawer';
+import { AuthModal } from './components/auth/AuthModal';
 import { AdminSidebar } from './components/admin/AdminSidebar';
 import { AdminDashboard } from './components/admin/AdminDashboard';
 import { AdminProducts } from './components/admin/AdminProducts';
@@ -52,13 +53,15 @@ function MainAppContent() {
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [storeSettings, setStoreSettings] = useState<StoreSettings>(DEFAULT_SETTINGS);
 
-  // Initial Auto-seed and purge demo data on first boot
+  // Auto-seed products & purge demo data when admin is authenticated
   useEffect(() => {
-    cleanupAllDemoData().catch(console.error);
-    seedDatabaseIfEmpty().catch(console.error);
-  }, []);
+    if (currentUser && isAdmin) {
+      cleanupAllDemoData().catch(() => {});
+      seedDatabaseIfEmpty().catch(() => {});
+    }
+  }, [currentUser, isAdmin]);
 
-  // Subscribe to core data
+  // Subscribe to public catalog data
   useEffect(() => {
     const unsubProducts = subscribeProducts(setProducts);
     const unsubRewards = subscribeRewards(setRewards);
@@ -88,6 +91,20 @@ function MainAppContent() {
     };
   }, [isAdmin]);
 
+  // Route according to role after authentication
+  useEffect(() => {
+    if (currentUser) {
+      if (isAdmin) {
+        setIsAdminView(true);
+        setAdminTab('dashboard');
+        setIsCartOpen(false);
+      } else {
+        setIsAdminView(false);
+        setActiveTab('catalog');
+      }
+    }
+  }, [currentUser?.uid, isAdmin]);
+
   // Route Protection: If non-admin attempts to view admin panel, redirect to catalog
   useEffect(() => {
     if (isAdminView && !isAdmin && !authLoading) {
@@ -97,9 +114,47 @@ function MainAppContent() {
     }
   }, [isAdminView, isAdmin, authLoading, showToast]);
 
+  // Route Protection: If admin tries to open cart, redirect back to admin dashboard
+  useEffect(() => {
+    if (isAdmin && isCartOpen) {
+      setIsCartOpen(false);
+      setIsAdminView(true);
+      setAdminTab('dashboard');
+    }
+  }, [isAdmin, isCartOpen]);
+
   const handleOrderSuccess = (orderId: string) => {
     setActiveTab('account');
   };
+
+  // Loading state
+  if (authLoading) {
+    return (
+      <div className="min-h-screen bg-[#FAF5EE] flex items-center justify-center p-4">
+        <div className="text-center space-y-3">
+          <div className="w-14 h-14 rounded-2xl bg-[#4A2E18] text-[#E5BA73] flex items-center justify-center mx-auto shadow-lg animate-pulse">
+            <Coffee className="w-7 h-7" />
+          </div>
+          <div className="font-black text-stone-900 text-lg">SUDUT KO.FEE</div>
+          <p className="text-xs text-stone-500">Memuat sistem aplikasi...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Strict Rule: Unauthenticated users CANNOT access any storefront or admin pages
+  // Only Login & Registration modal is presented until authenticated.
+  if (!currentUser) {
+    return (
+      <div className="min-h-screen bg-[#FAF5EE] text-[#2C1810] flex flex-col justify-center items-center p-4 relative overflow-hidden">
+        {/* Ambient background styling */}
+        <div className="absolute top-0 right-0 w-96 h-96 bg-amber-500/10 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute bottom-0 left-0 w-96 h-96 bg-stone-500/10 rounded-full blur-3xl pointer-events-none" />
+
+        <AuthModal isOpen={true} canClose={false} initialMode="login" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-[#FAF5EE] text-[#2C1810] font-sans antialiased flex flex-col selection:bg-amber-800 selection:text-white">
@@ -158,7 +213,11 @@ function MainAppContent() {
             setActiveTab={setActiveTab}
             isAdminView={isAdminView}
             setIsAdminView={setIsAdminView}
-            onOpenCart={() => setIsCartOpen(true)}
+            onOpenCart={() => {
+              if (!isAdmin) {
+                setIsCartOpen(true);
+              }
+            }}
           />
 
           {/* User Main Container */}
@@ -177,16 +236,22 @@ function MainAppContent() {
             setActiveTab={setActiveTab}
             isAdminView={isAdminView}
             setIsAdminView={setIsAdminView}
-            onOpenCart={() => setIsCartOpen(true)}
+            onOpenCart={() => {
+              if (!isAdmin) {
+                setIsCartOpen(true);
+              }
+            }}
           />
 
-          {/* Cart Drawer */}
-          <CartDrawer
-            isOpen={isCartOpen}
-            onClose={() => setIsCartOpen(false)}
-            onOrderSuccess={handleOrderSuccess}
-            nilaiPerPoin={storeSettings.nilaiPerPoin}
-          />
+          {/* Cart Drawer (Disabled entirely for admin) */}
+          {!isAdmin && (
+            <CartDrawer
+              isOpen={isCartOpen}
+              onClose={() => setIsCartOpen(false)}
+              onOrderSuccess={handleOrderSuccess}
+              nilaiPerPoin={storeSettings.nilaiPerPoin}
+            />
+          )}
 
           {/* Footer for desktop */}
           <footer className="hidden sm:block mt-auto border-t border-amber-900/10 py-8 bg-[#F4EDE2] text-xs text-stone-600">

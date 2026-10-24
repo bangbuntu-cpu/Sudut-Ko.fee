@@ -151,7 +151,7 @@ export const Navbar: React.FC<NavbarProps> = ({
               )}
 
               {/* Cart Button */}
-              {!isAdminView && (
+              {!isAdminView && !isAdmin && (
                 <button
                   onClick={onOpenCart}
                   className="relative p-2.5 sm:px-3.5 sm:py-2 rounded-xl bg-white border border-stone-200 hover:border-amber-700/40 text-stone-800 hover:text-amber-900 shadow-sm transition-all flex items-center gap-2"
@@ -217,27 +217,31 @@ export const Navbar: React.FC<NavbarProps> = ({
                         </button>
                       )}
 
-                      <button
-                        onClick={() => {
-                          setIsAdminView(false);
-                          setActiveTab('account');
-                        }}
-                        className="w-full px-4 py-2 text-left text-xs font-semibold text-stone-700 hover:bg-amber-50 hover:text-amber-900 flex items-center gap-2"
-                      >
-                        <User className="w-4 h-4 text-stone-500" />
-                        Profil &amp; Kartu Member
-                      </button>
+                      {!isAdmin && (
+                        <>
+                          <button
+                            onClick={() => {
+                              setIsAdminView(false);
+                              setActiveTab('account');
+                            }}
+                            className="w-full px-4 py-2 text-left text-xs font-semibold text-stone-700 hover:bg-amber-50 hover:text-amber-900 flex items-center gap-2 cursor-pointer"
+                          >
+                            <User className="w-4 h-4 text-stone-500" />
+                            Profil &amp; Kartu Member
+                          </button>
 
-                      <button
-                        onClick={() => {
-                          setIsAdminView(false);
-                          setActiveTab('rewards');
-                        }}
-                        className="w-full px-4 py-2 text-left text-xs font-semibold text-stone-700 hover:bg-amber-50 hover:text-amber-900 flex items-center gap-2"
-                      >
-                        <Award className="w-4 h-4 text-amber-500" />
-                        Tukar Hadiah ({userProfile?.poin || 0} Poin)
-                      </button>
+                          <button
+                            onClick={() => {
+                              setIsAdminView(false);
+                              setActiveTab('rewards');
+                            }}
+                            className="w-full px-4 py-2 text-left text-xs font-semibold text-stone-700 hover:bg-amber-50 hover:text-amber-900 flex items-center gap-2 cursor-pointer"
+                          >
+                            <Award className="w-4 h-4 text-amber-500" />
+                            Tukar Hadiah ({userProfile?.poin || 0} Poin)
+                          </button>
+                        </>
+                      )}
 
                       <div className="border-t border-stone-100 my-1" />
 

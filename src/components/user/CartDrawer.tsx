@@ -21,16 +21,20 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   nilaiPerPoin = 13000
 }) => {
   const { items, updateQuantity, removeFromCart, clearCart, totalPrice, totalItems } = useCart();
-  const { currentUser, isMember } = useAuth();
+  const { currentUser, isMember, isAdmin } = useAuth();
   const { showToast } = useToast();
   const [showCheckout, setShowCheckout] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
 
-  if (!isOpen) return null;
+  if (!isOpen || isAdmin) return null;
 
   const estimatedPoints = calculatePoints(totalPrice, nilaiPerPoin);
 
   const handleProceedToCheckout = () => {
+    if (isAdmin) {
+      showToast('Admin tidak dapat melakukan pemesanan belanja', 'warning');
+      return;
+    }
     // ENFORCE RULE: Pembeli TIDAK BISA melakukan pembelian tanpa melakukan login
     if (!currentUser) {
       showToast('Silakan masuk ke akun Anda terlebih dahulu untuk melakukan pembelian.', 'warning');

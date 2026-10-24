@@ -36,9 +36,11 @@ export const CheckoutModal: React.FC<CheckoutModalProps> = ({
   onOrderSuccess,
   nilaiPerPoin = 13000
 }) => {
-  const { currentUser, userProfile, isMember } = useAuth();
+  const { currentUser, userProfile, isMember, isAdmin } = useAuth();
   const { items, totalPrice, toOrderItems, clearCart } = useCart();
   const { showToast } = useToast();
+
+  if (isAdmin) return null;
 
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('qris');
   const [nama, setNama] = useState(userProfile?.nama || '');

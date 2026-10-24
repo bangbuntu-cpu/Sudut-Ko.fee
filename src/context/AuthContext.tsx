@@ -1,16 +1,18 @@
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import {
-  User as FirebaseUser,
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signInWithPopup,
-  GoogleAuthProvider,
-  signOut
-} from 'firebase/auth';
-import { doc, onSnapshot, setDoc, getDoc } from 'firebase/firestore';
-import { auth, db } from '../firebase/config';
 import { UserProfile, UserRole } from '../types';
+import {
+  ADMIN_EMAIL,
+  ADMIN_DEFAULT_PASS,
+  ADMIN_UID,
+  DEFAULT_ADMIN_PROFILE,
+  DEFAULT_ADMIN_CREDENTIAL,
+  findUserByEmail,
+  getCredentialForUser,
+  saveCredentialForUser,
+  createUserProfile,
+  registerAsMember,
+  subscribeAllUsers
+} from '../services/dbService';
 
 interface AuthContextType {
   currentUser: { uid: string; email?: string | null; displayName?: string | null } | null;
@@ -19,8 +21,7 @@ interface AuthContextType {
   isAdmin: boolean;
   isMember: boolean;
   loginWithEmail: (email: string, pass: string) => Promise<void>;
-  registerWithEmail: (email: string, pass: string, nama: string) => Promise<void>;
-  loginWithGoogle: () => Promise<void>;
+  registerWithEmail: (email: string, pass: string, confirmPass: string, nama: string) => Promise<void>;
   logout: () => Promise<void>;
   updateMemberStatus: (nama: string, noHp: string, alamat: string) => Promise<void>;
 }
@@ -28,6 +29,22 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const USER_SESSION_KEY = 'sudutkofee_user_session_v1';
+
+/**
+ * Computes a secure SHA-256 cryptographic hash using Web Crypto API.
+ * Never stores plaintext passwords in the database or spreadsheet!
+ */
+async function hashPassword(password: string, salt: string): Promise<string> {
+  const enc = new TextEncoder();
+  const data = enc.encode(password + ':' + salt);
+  const hashBuffer = await crypto.subtle.digest('SHA-256', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map((b) => b.toString(16).padStart(2, '0')).join('');
+}
+
+function generateSalt(): string {
+  return Math.random().toString(36).substring(2, 10) + Date.now().toString(36);
+}
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<{
@@ -37,7 +54,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   } | null>(() => {
     try {
       const saved = localStorage.getItem(USER_SESSION_KEY);
-      return saved ? JSON.parse(saved) : null;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed?.uid) {
+          return {
+            uid: parsed.uid,
+            email: parsed.email || null,
+            displayName: parsed.nama || parsed.displayName || null
+          };
+        }
+      }
+      return null;
     } catch {
       return null;
     }
@@ -54,305 +81,214 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Sync Firebase Auth user and Firestore user profile
+  // Hydrate user session from storage and subscribe to real-time user updates
   useEffect(() => {
-    let unsubscribeProfile: (() => void) | null = null;
-
-    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        setCurrentUser(user);
-
-        const userDocRef = doc(db, 'users', user.uid);
-        unsubscribeProfile = onSnapshot(
-          userDocRef,
-          async (snapshot) => {
-            if (snapshot.exists()) {
-              const data = snapshot.data() as UserProfile;
-              const emailLower = (user.email || '').toLowerCase();
-              const isAdminEmail =
-                emailLower === 'bangbuntu@gmail.com' ||
-                emailLower === 'admin@sudutkofee.com' ||
-                emailLower.startsWith('admin@') ||
-                data.role === 'admin';
-
-              if (isAdminEmail && data.role !== 'admin') {
-                await setDoc(userDocRef, { ...data, role: 'admin' }, { merge: true });
-                await setDoc(doc(db, 'admins', user.uid), {
-                  uid: user.uid,
-                  email: user.email,
-                  role: 'admin'
-                });
-                const updated = { ...data, role: 'admin' as UserRole };
-                setUserProfile(updated);
-                localStorage.setItem(USER_SESSION_KEY, JSON.stringify(updated));
-              } else {
-                setUserProfile(data);
-                localStorage.setItem(USER_SESSION_KEY, JSON.stringify(data));
-              }
-            } else {
-              const emailLower = (user.email || '').toLowerCase();
-              const isAdminEmail =
-                emailLower === 'bangbuntu@gmail.com' ||
-                emailLower === 'admin@sudutkofee.com' ||
-                emailLower.startsWith('admin@');
-
-              if (!isAdminEmail) {
-                await signOut(auth).catch(() => {});
-                setCurrentUser(null);
-                setUserProfile(null);
-                localStorage.removeItem(USER_SESSION_KEY);
-                setLoading(false);
-                return;
-              }
-
-              const initialProfile: UserProfile = {
-                uid: user.uid,
-                nama: 'Admin SUDUT KO.FEE',
-                email: user.email || '',
-                role: 'admin',
-                isMember: false,
-                poin: 0,
-                createdAt: new Date().toISOString()
-              };
-              await setDoc(userDocRef, initialProfile);
-              await setDoc(doc(db, 'admins', user.uid), {
-                uid: user.uid,
-                email: user.email,
-                role: 'admin'
-              });
-              setUserProfile(initialProfile);
-              localStorage.setItem(USER_SESSION_KEY, JSON.stringify(initialProfile));
-            }
-            setLoading(false);
-          },
-          (error) => {
-            console.error('Error fetching user profile:', error);
-            setLoading(false);
-          }
-        );
-      } else {
-        if (unsubscribeProfile) unsubscribeProfile();
-
-        // Check if session stored locally
-        const savedSession = localStorage.getItem(USER_SESSION_KEY);
-        if (savedSession) {
-          try {
-            const parsed = JSON.parse(savedSession) as UserProfile;
+    try {
+      const savedStr = localStorage.getItem(USER_SESSION_KEY);
+      if (savedStr) {
+        const savedData = JSON.parse(savedStr);
+        if (savedData?.uid) {
+          // If admin, verify admin default
+          if (savedData.email === ADMIN_EMAIL || savedData.role === 'admin') {
             setCurrentUser({
-              uid: parsed.uid,
-              email: parsed.email,
-              displayName: parsed.nama
+              uid: ADMIN_UID,
+              email: ADMIN_EMAIL,
+              displayName: DEFAULT_ADMIN_PROFILE.nama
             });
-            setUserProfile(parsed);
-
-            // Keep Firestore synchronized with profile
-            const profileRef = doc(db, 'users', parsed.uid);
-            unsubscribeProfile = onSnapshot(profileRef, (snap) => {
-              if (snap.exists()) {
-                const fresh = snap.data() as UserProfile;
-                setUserProfile(fresh);
-                localStorage.setItem(USER_SESSION_KEY, JSON.stringify(fresh));
-              }
+            setUserProfile(DEFAULT_ADMIN_PROFILE);
+          } else {
+            setCurrentUser({
+              uid: savedData.uid,
+              email: savedData.email || null,
+              displayName: savedData.nama || savedData.displayName || null
             });
-          } catch {
-            setCurrentUser(null);
-            setUserProfile(null);
+            setUserProfile(savedData);
           }
-        } else {
-          setCurrentUser(null);
-          setUserProfile(null);
         }
-        setLoading(false);
       }
+    } catch (e) {
+      console.warn('Session parse error:', e);
+    } finally {
+      setLoading(false);
+    }
+
+    // Subscribe to user list changes to keep logged in user's profile and points up to date
+    const unsubUsers = subscribeAllUsers((allUsers) => {
+      setCurrentUser((current) => {
+        if (!current) return null;
+        const matching = allUsers.find((u) => u.uid === current.uid || u.email === current.email);
+        if (matching) {
+          setUserProfile(matching);
+          localStorage.setItem(USER_SESSION_KEY, JSON.stringify(matching));
+        }
+        return current;
+      });
     });
 
     return () => {
-      unsubscribeAuth();
-      if (unsubscribeProfile) unsubscribeProfile();
+      unsubUsers();
     };
   }, []);
 
   const loginWithEmail = async (emailInput: string, pass: string) => {
     const email = emailInput.trim().toLowerCase();
-    const isAdminEmail =
-      email === 'admin@sudutkofee.com' ||
-      email === 'bangbuntu@gmail.com' ||
-      email.startsWith('admin@');
+    const cleanPass = pass.trim();
 
-    try {
-      const cred = await signInWithEmailAndPassword(auth, email, pass);
-      const uid = cred.user.uid;
-      const userRef = doc(db, 'users', uid);
-      const userSnap = await getDoc(userRef);
-
-      if (!userSnap.exists() && !isAdminEmail) {
-        await signOut(auth).catch(() => {});
-        throw new Error('Akun tidak terdaftar di database. Silakan daftar (register) terlebih dahulu.');
-      }
-
-      if (userSnap.exists() && !isAdminEmail) {
-        const profile = userSnap.data() as UserProfile;
-        if (profile.password && profile.password !== pass) {
-          await signOut(auth).catch(() => {});
-          throw new Error('Password salah. Silakan periksa kembali password Anda.');
-        }
-      }
-    } catch (err: any) {
-      if (
-        err?.code === 'auth/operation-not-allowed' ||
-        err?.code === 'auth/configuration-not-found' ||
-        err?.code === 'auth/invalid-credential' ||
-        err?.code === 'auth/wrong-password' ||
-        err?.code === 'auth/invalid-login-credentials'
-      ) {
-        const uid = 'user_' + btoa(email).replace(/[^a-zA-Z0-9]/g, '').slice(0, 24);
-        const userRef = doc(db, 'users', uid);
-        const userSnap = await getDoc(userRef);
-
-        if (!userSnap.exists() && !isAdminEmail) {
-          throw new Error('Akun tidak terdaftar di database. Silakan daftar (register) terlebih dahulu.');
-        }
-
-        let profile: UserProfile;
-        if (userSnap.exists()) {
-          profile = userSnap.data() as UserProfile;
-          if (profile.password && profile.password !== pass && !isAdminEmail) {
-            throw new Error('Password salah. Silakan periksa kembali password Anda.');
-          }
-          if (isAdminEmail && profile.role !== 'admin') {
-            profile.role = 'admin';
-            await setDoc(userRef, { role: 'admin' }, { merge: true });
-          }
-        } else {
-          profile = {
-            uid,
-            nama: 'Admin SUDUT KO.FEE',
-            email,
-            password: pass,
-            role: 'admin',
-            isMember: false,
-            poin: 0,
-            createdAt: new Date().toISOString()
-          };
-          await setDoc(userRef, profile);
-          await setDoc(doc(db, 'admins', uid), { uid, email, role: 'admin' });
-        }
-
-        localStorage.setItem(USER_SESSION_KEY, JSON.stringify(profile));
-        setCurrentUser({ uid: profile.uid, email: profile.email, displayName: profile.nama });
-        setUserProfile(profile);
-        return;
-      }
-      throw err;
+    if (!email || !cleanPass) {
+      throw new Error('Email dan kata sandi wajib diisi.');
     }
-  };
 
-  const registerWithEmail = async (emailInput: string, pass: string, namaInput: string) => {
-    const email = emailInput.trim().toLowerCase();
-    const nama = namaInput.trim();
-    const isAdminEmail =
-      email === 'admin@sudutkofee.com' ||
-      email === 'bangbuntu@gmail.com' ||
-      email.startsWith('admin@');
+    // 1. ADMIN LOGIN SPECIAL HANDLING
+    if (email === ADMIN_EMAIL) {
+      if (cleanPass !== ADMIN_DEFAULT_PASS) {
+        throw new Error('Email atau password salah.');
+      }
 
-    try {
-      const cred = await createUserWithEmailAndPassword(auth, email, pass);
-      const newProfile: UserProfile = {
-        uid: cred.user.uid,
-        nama: nama || email.split('@')[0],
-        email,
-        password: pass,
-        role: isAdminEmail ? 'admin' : 'user',
-        isMember: false,
-        poin: 0,
-        createdAt: new Date().toISOString()
+      const sessionObj = {
+        uid: ADMIN_UID,
+        email: ADMIN_EMAIL,
+        displayName: DEFAULT_ADMIN_PROFILE.nama
       };
 
-      await setDoc(doc(db, 'users', cred.user.uid), newProfile);
-      if (isAdminEmail) {
-        await setDoc(doc(db, 'admins', cred.user.uid), {
-          uid: cred.user.uid,
-          email,
-          role: 'admin'
-        });
-      }
-      localStorage.setItem(USER_SESSION_KEY, JSON.stringify(newProfile));
-    } catch (err: any) {
-      if (err?.code === 'auth/operation-not-allowed' || err?.code === 'auth/configuration-not-found') {
-        const uid = 'user_' + btoa(email).replace(/[^a-zA-Z0-9]/g, '').slice(0, 24);
-        const newProfile: UserProfile = {
-          uid,
-          nama: nama || (isAdminEmail ? 'Admin SUDUT KO.FEE' : email.split('@')[0]),
-          email,
-          password: pass,
-          role: isAdminEmail ? 'admin' : 'user',
-          isMember: false,
-          poin: 0,
-          createdAt: new Date().toISOString()
-        };
-
-        await setDoc(doc(db, 'users', uid), newProfile);
-        if (isAdminEmail) {
-          await setDoc(doc(db, 'admins', uid), { uid, email, role: 'admin' });
-        }
-        localStorage.setItem(USER_SESSION_KEY, JSON.stringify(newProfile));
-        setCurrentUser({ uid: newProfile.uid, email: newProfile.email, displayName: newProfile.nama });
-        setUserProfile(newProfile);
-        return;
-      }
-      throw err;
+      setCurrentUser(sessionObj);
+      setUserProfile(DEFAULT_ADMIN_PROFILE);
+      localStorage.setItem(USER_SESSION_KEY, JSON.stringify(DEFAULT_ADMIN_PROFILE));
+      return;
     }
+
+    // 2. STANDARD USER LOGIN
+    const user = await findUserByEmail(email);
+    if (!user) {
+      throw new Error('Akun belum terdaftar. Silakan lakukan pendaftaran terlebih dahulu.');
+    }
+
+    // Verify password against stored hash
+    const cred = await getCredentialForUser(user.uid);
+    if (cred) {
+      const inputHash = await hashPassword(cleanPass, cred.salt);
+      if (inputHash !== cred.passwordHash) {
+        throw new Error('Email atau password salah.');
+      }
+    } else {
+      // Legacy user without credentials yet: securely lock this password now
+      const salt = generateSalt();
+      const passwordHash = await hashPassword(cleanPass, salt);
+      await saveCredentialForUser({
+        uid: user.uid,
+        email: user.email,
+        salt,
+        passwordHash
+      });
+    }
+
+    const sessionObj = {
+      uid: user.uid,
+      email: user.email,
+      displayName: user.nama
+    };
+
+    setCurrentUser(sessionObj);
+    setUserProfile(user);
+    localStorage.setItem(USER_SESSION_KEY, JSON.stringify(user));
   };
 
-  const loginWithGoogle = async () => {
-    const provider = new GoogleAuthProvider();
-    const cred = await signInWithPopup(auth, provider);
-    const user = cred.user;
-    const emailLower = (user.email || '').toLowerCase();
-    const isAdminEmail =
-      emailLower === 'bangbuntu@gmail.com' ||
-      emailLower === 'admin@sudutkofee.com' ||
-      emailLower.startsWith('admin@');
+  const registerWithEmail = async (
+    emailInput: string,
+    pass: string,
+    confirmPass: string,
+    namaInput: string
+  ) => {
+    const email = emailInput.trim().toLowerCase();
+    const nama = namaInput.trim();
+    const cleanPass = pass.trim();
+    const cleanConfirm = confirmPass.trim();
 
-    const userRef = doc(db, 'users', user.uid);
-    const userSnap = await getDoc(userRef);
-
-    if (!userSnap.exists() && !isAdminEmail) {
-      await signOut(auth).catch(() => {});
-      throw new Error('Akun Google ini tidak terdaftar di database. Silakan daftar (register) terlebih dahulu.');
+    // 1. Validations
+    if (!nama) {
+      throw new Error('Nama lengkap wajib diisi.');
     }
+
+    if (!email) {
+      throw new Error('Alamat email wajib diisi.');
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      throw new Error('Format email tidak valid. Gunakan format contoh@domain.com.');
+    }
+
+    if (cleanPass.length < 6) {
+      throw new Error('Password minimal 6 karakter.');
+    }
+
+    if (cleanPass !== cleanConfirm) {
+      throw new Error('Konfirmasi password tidak cocok dengan password.');
+    }
+
+    // Admin email cannot be registered through public registration
+    if (email === ADMIN_EMAIL) {
+      throw new Error('Email ini telah terdaftar sebagai akun Administrator. Silakan masuk di halaman login.');
+    }
+
+    // 2. Enforce unique email check
+    const existing = await findUserByEmail(email);
+    if (existing) {
+      throw new Error('Email sudah terdaftar. Silakan masuk menggunakan akun Anda.');
+    }
+
+    // 3. Generate unique user UID and cryptographic password hash
+    const uid = 'usr_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 8);
+    const salt = generateSalt();
+    const passwordHash = await hashPassword(cleanPass, salt);
+
+    // 4. Store user in Spreadsheet database
+    // STRICT REQUIREMENT: Public registration ALWAYS has role "user".
+    // NEVER store plaintext password in database!
+    const newProfile: UserProfile = {
+      uid,
+      nama,
+      email,
+      role: 'user',
+      isMember: false,
+      poin: 0,
+      createdAt: new Date().toISOString()
+    };
+
+    await createUserProfile(newProfile);
+
+    // Store credentials securely (only salt and hash)
+    await saveCredentialForUser({
+      uid,
+      email,
+      salt,
+      passwordHash
+    });
+
+    const sessionObj = {
+      uid,
+      email,
+      displayName: nama
+    };
+
+    setCurrentUser(sessionObj);
+    setUserProfile(newProfile);
+    localStorage.setItem(USER_SESSION_KEY, JSON.stringify(newProfile));
   };
 
   const logout = async () => {
     localStorage.removeItem(USER_SESSION_KEY);
-    try {
-      await signOut(auth);
-    } catch {
-      // ignore
-    }
     setCurrentUser(null);
     setUserProfile(null);
   };
 
   const updateMemberStatus = async (nama: string, noHp: string, alamat: string) => {
     if (!currentUser) throw new Error('Pengguna belum masuk');
-    const updated = {
-      nama,
-      noHp,
-      alamat,
-      isMember: true
-    };
 
-    const userRef = doc(db, 'users', currentUser.uid);
-    try {
-      await setDoc(userRef, updated, { merge: true });
-    } catch (e) {
-      console.warn('Firestore updateMemberStatus:', e);
-    }
+    await registerAsMember(currentUser.uid, { nama, noHp, alamat });
 
     setUserProfile((prev) => {
       if (!prev) return null;
-      const next = { ...prev, ...updated };
+      const next: UserProfile = { ...prev, nama, noHp, alamat, isMember: true };
       localStorage.setItem(USER_SESSION_KEY, JSON.stringify(next));
       return next;
     });
@@ -361,9 +297,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const userEmailLower = (currentUser?.email || '').toLowerCase();
   const isAdmin =
     userProfile?.role === 'admin' ||
-    userEmailLower === 'admin@sudutkofee.com' ||
-    userEmailLower === 'bangbuntu@gmail.com' ||
-    userEmailLower.startsWith('admin@');
+    userEmailLower === ADMIN_EMAIL;
 
   const isMember = Boolean(userProfile?.isMember);
 
@@ -377,7 +311,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         isMember,
         loginWithEmail,
         registerWithEmail,
-        loginWithGoogle,
         logout,
         updateMemberStatus
       }}

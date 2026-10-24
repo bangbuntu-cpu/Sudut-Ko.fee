@@ -4,6 +4,7 @@ import { Product, StoreSettings } from '../../types';
 import { subscribeProducts, seedDatabaseIfEmpty, subscribeStoreSettings } from '../../services/dbService';
 import { formatRupiah } from '../../utils/format';
 import { useCart } from '../../context/CartContext';
+import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { ProductDetailModal } from './ProductDetailModal';
 
@@ -21,6 +22,7 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ nilaiPerPoin: pr
   const [storeSettings, setStoreSettings] = useState<StoreSettings | null>(null);
 
   const { addToCart } = useCart();
+  const { isAdmin } = useAuth();
   const { showToast } = useToast();
 
   useEffect(() => {
@@ -264,16 +266,18 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ nilaiPerPoin: pr
                       </div>
                     </div>
 
-                    <button
-                      type="button"
-                      onClick={(e) => handleQuickAdd(e, product)}
-                      disabled={isOutOfStock}
-                      className="p-2 sm:px-3 sm:py-2 rounded-xl bg-[#FAF5EE] hover:bg-[#4A2E18] text-amber-900 hover:text-white border border-amber-800/20 transition-all flex items-center gap-1.5 text-xs font-bold disabled:opacity-40"
-                      aria-label="Tambah ke keranjang"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span className="hidden sm:inline">Pesan</span>
-                    </button>
+                    {!isAdmin && (
+                      <button
+                        type="button"
+                        onClick={(e) => handleQuickAdd(e, product)}
+                        disabled={isOutOfStock}
+                        className="p-2 sm:px-3 sm:py-2 rounded-xl bg-[#FAF5EE] hover:bg-[#4A2E18] text-amber-900 hover:text-white border border-amber-800/20 transition-all flex items-center gap-1.5 text-xs font-bold disabled:opacity-40"
+                        aria-label="Tambah ke keranjang"
+                      >
+                        <Plus className="w-4 h-4" />
+                        <span className="hidden sm:inline">Pesan</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>

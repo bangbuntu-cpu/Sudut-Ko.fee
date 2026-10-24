@@ -3,6 +3,7 @@ import { X, Plus, Minus, ShoppingCart, Coffee, Check } from 'lucide-react';
 import { Product } from '../../types';
 import { formatRupiah } from '../../utils/format';
 import { useCart } from '../../context/CartContext';
+import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 
 interface ProductDetailModalProps {
@@ -12,6 +13,7 @@ interface ProductDetailModalProps {
 
 export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({ product, onClose }) => {
   const { addToCart } = useCart();
+  const { isAdmin } = useAuth();
   const { showToast } = useToast();
   const [quantity, setQuantity] = useState(1);
   const [notes, setNotes] = useState('');
@@ -81,69 +83,80 @@ export const ProductDetailModal: React.FC<ProductDetailModalProps> = ({ product,
             {product.deskripsi}
           </p>
 
-          {/* Notes input */}
-          <div className="my-4">
-            <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
-              Catatan Pesanan (opsional)
-            </label>
-            <input
-              type="text"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              placeholder="Contoh: Less sugar / less ice / tanpa sedotan..."
-              className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-xs sm:text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-700"
-            />
-          </div>
-
-          {/* Quantity and Add Button */}
-          <div className="flex items-center gap-4 pt-2">
-            {/* Quantity Counter */}
-            <div className="flex items-center border border-stone-300 rounded-2xl bg-white p-1">
-              <button
-                type="button"
-                onClick={() => setQuantity((q) => Math.max(1, q - 1))}
-                className="w-9 h-9 flex items-center justify-center rounded-xl text-stone-600 hover:bg-stone-100 transition"
-                aria-label="Kurangi jumlah"
-              >
-                <Minus className="w-4 h-4" />
-              </button>
-              <span className="w-10 text-center font-bold text-sm text-stone-900">
-                {quantity}
-              </span>
-              <button
-                type="button"
-                onClick={() => setQuantity((q) => Math.min(product.stok, q + 1))}
-                disabled={quantity >= product.stok}
-                className="w-9 h-9 flex items-center justify-center rounded-xl text-stone-600 hover:bg-stone-100 transition disabled:opacity-30"
-                aria-label="Tambah jumlah"
-              >
-                <Plus className="w-4 h-4" />
-              </button>
+          {isAdmin ? (
+            <div className="mt-4 p-4 rounded-2xl bg-amber-50 border border-amber-200/80 text-center">
+              <span className="text-xs font-bold text-amber-900 block">Akun Administrator</span>
+              <p className="text-[11px] text-amber-800/80 mt-0.5">
+                Pemesanan dan keranjang belanja dinonaktifkan untuk akun admin.
+              </p>
             </div>
+          ) : (
+            <>
+              {/* Notes input */}
+              <div className="my-4">
+                <label className="block text-xs font-bold text-stone-700 uppercase tracking-wider mb-1">
+                  Catatan Pesanan (opsional)
+                </label>
+                <input
+                  type="text"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Contoh: Less sugar / less ice / tanpa sedotan..."
+                  className="w-full px-3.5 py-2 rounded-xl border border-stone-300 bg-white text-xs sm:text-sm text-stone-900 focus:outline-none focus:ring-2 focus:ring-amber-700"
+                />
+              </div>
 
-            {/* Submit Add to Cart Button */}
-            <button
-              type="button"
-              onClick={handleAddToCart}
-              disabled={product.stok <= 0}
-              className={`flex-1 py-3 px-5 rounded-2xl font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 ${
-                isAdded
-                  ? 'bg-emerald-700 text-white'
-                  : 'bg-[#4A2E18] hover:bg-[#382110] text-[#FAF5EE] shadow-amber-950/20'
-              } disabled:opacity-50`}
-            >
-              {isAdded ? (
-                <>
-                  <Check className="w-4 h-4" /> Dimasukkan
-                </>
-              ) : (
-                <>
-                  <ShoppingCart className="w-4 h-4" /> Tambah ke Keranjang •{' '}
-                  {formatRupiah(product.harga * quantity)}
-                </>
-              )}
-            </button>
-          </div>
+              {/* Quantity and Add Button */}
+              <div className="flex items-center gap-4 pt-2">
+                {/* Quantity Counter */}
+                <div className="flex items-center border border-stone-300 rounded-2xl bg-white p-1">
+                  <button
+                    type="button"
+                    onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                    className="w-9 h-9 flex items-center justify-center rounded-xl text-stone-600 hover:bg-stone-100 transition cursor-pointer"
+                    aria-label="Kurangi jumlah"
+                  >
+                    <Minus className="w-4 h-4" />
+                  </button>
+                  <span className="w-10 text-center font-bold text-sm text-stone-900">
+                    {quantity}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setQuantity((q) => Math.min(product.stok, q + 1))}
+                    disabled={quantity >= product.stok}
+                    className="w-9 h-9 flex items-center justify-center rounded-xl text-stone-600 hover:bg-stone-100 transition disabled:opacity-30 cursor-pointer"
+                    aria-label="Tambah jumlah"
+                  >
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+
+                {/* Submit Add to Cart Button */}
+                <button
+                  type="button"
+                  onClick={handleAddToCart}
+                  disabled={product.stok <= 0}
+                  className={`flex-1 py-3 px-5 rounded-2xl font-bold text-sm shadow-md transition-all flex items-center justify-center gap-2 cursor-pointer ${
+                    isAdded
+                      ? 'bg-emerald-700 text-white'
+                      : 'bg-[#4A2E18] hover:bg-[#382110] text-[#FAF5EE] shadow-amber-950/20'
+                  } disabled:opacity-50`}
+                >
+                  {isAdded ? (
+                    <>
+                      <Check className="w-4 h-4" /> Dimasukkan
+                    </>
+                  ) : (
+                    <>
+                      <ShoppingCart className="w-4 h-4" /> Tambah ke Keranjang •{' '}
+                      {formatRupiah(product.harga * quantity)}
+                    </>
+                  )}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

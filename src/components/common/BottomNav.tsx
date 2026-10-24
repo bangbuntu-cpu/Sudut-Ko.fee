@@ -21,16 +21,22 @@ export const BottomNav: React.FC<BottomNavProps> = ({
   const { totalItems } = useCart();
   const { isAdmin, userProfile } = useAuth();
 
+  // On Admin View, hide mobile consumer bottom navigation completely
+  // (Admin has dedicated mobile AdminSidebar menu selector)
+  if (isAdminView) {
+    return null;
+  }
+
   return (
     <div className="md:hidden fixed bottom-0 left-0 right-0 z-40 bg-[#FAF5EE]/95 backdrop-blur-md border-t border-amber-900/10 px-2 py-1.5 shadow-[0_-4px_20px_rgba(0,0,0,0.05)]">
-      <div className="grid grid-cols-4 items-center gap-1">
+      <div className={`grid ${isAdmin ? 'grid-cols-2' : 'grid-cols-4'} items-center gap-1`}>
         {/* Tab 1: Menu Kopi */}
         <button
           onClick={() => {
             setIsAdminView(false);
             setActiveTab('catalog');
           }}
-          className={`flex flex-col items-center justify-center py-1.5 rounded-xl transition-all ${
+          className={`flex flex-col items-center justify-center py-1.5 rounded-xl transition-all cursor-pointer ${
             !isAdminView && activeTab === 'catalog'
               ? 'text-amber-900 font-bold bg-amber-200/40'
               : 'text-stone-500 hover:text-stone-800'
@@ -40,58 +46,58 @@ export const BottomNav: React.FC<BottomNavProps> = ({
           <span className="text-[10px] mt-0.5">Katalog</span>
         </button>
 
-        {/* Tab 2: Keranjang */}
-        <button
-          onClick={() => {
-            setIsAdminView(false);
-            onOpenCart();
-          }}
-          className="relative flex flex-col items-center justify-center py-1.5 rounded-xl text-stone-500 hover:text-stone-800 transition-all"
-        >
-          <div className="relative">
-            <ShoppingCart className="w-5 h-5" />
-            {totalItems > 0 && (
-              <span className="absolute -top-1.5 -right-2 bg-amber-600 text-white text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow">
-                {totalItems}
-              </span>
-            )}
-          </div>
-          <span className="text-[10px] mt-0.5">Keranjang</span>
-        </button>
-
-        {/* Tab 3: Tukar Poin */}
-        <button
-          onClick={() => {
-            setIsAdminView(false);
-            setActiveTab('rewards');
-          }}
-          className={`flex flex-col items-center justify-center py-1.5 rounded-xl transition-all ${
-            !isAdminView && activeTab === 'rewards'
-              ? 'text-amber-900 font-bold bg-amber-200/40'
-              : 'text-stone-500 hover:text-stone-800'
-          }`}
-        >
-          <Award className="w-5 h-5 text-amber-600" />
-          <span className="text-[10px] mt-0.5">
-            Poin {userProfile?.poin ? `(${userProfile.poin})` : ''}
-          </span>
-        </button>
-
-        {/* Tab 4: Akun or Admin Panel */}
-        {isAdmin ? (
+        {/* Tab 2: Keranjang - ONLY FOR NON-ADMIN USER */}
+        {!isAdmin && (
           <button
             onClick={() => {
-              setIsAdminView(!isAdminView);
-              if (!isAdminView) setActiveTab('admin_dashboard');
+              setIsAdminView(false);
+              onOpenCart();
             }}
-            className={`flex flex-col items-center justify-center py-1.5 rounded-xl transition-all ${
-              isAdminView
+            className="relative flex flex-col items-center justify-center py-1.5 rounded-xl text-stone-500 hover:text-stone-800 transition-all cursor-pointer"
+          >
+            <div className="relative">
+              <ShoppingCart className="w-5 h-5" />
+              {totalItems > 0 && (
+                <span className="absolute -top-1.5 -right-2 bg-amber-600 text-white text-[10px] font-black w-4 h-4 rounded-full flex items-center justify-center shadow">
+                  {totalItems}
+                </span>
+              )}
+            </div>
+            <span className="text-[10px] mt-0.5">Keranjang</span>
+          </button>
+        )}
+
+        {/* Tab 3: Tukar Poin - ONLY FOR NON-ADMIN USER */}
+        {!isAdmin && (
+          <button
+            onClick={() => {
+              setIsAdminView(false);
+              setActiveTab('rewards');
+            }}
+            className={`flex flex-col items-center justify-center py-1.5 rounded-xl transition-all cursor-pointer ${
+              !isAdminView && activeTab === 'rewards'
                 ? 'text-amber-900 font-bold bg-amber-200/40'
                 : 'text-stone-500 hover:text-stone-800'
             }`}
           >
+            <Award className="w-5 h-5 text-amber-600" />
+            <span className="text-[10px] mt-0.5">
+              Poin {userProfile?.poin ? `(${userProfile.poin})` : ''}
+            </span>
+          </button>
+        )}
+
+        {/* Tab 4: Akun or Admin Panel Switcher */}
+        {isAdmin ? (
+          <button
+            onClick={() => {
+              setIsAdminView(true);
+              setActiveTab('admin_dashboard');
+            }}
+            className="flex flex-col items-center justify-center py-1.5 rounded-xl transition-all cursor-pointer text-amber-900 font-bold bg-amber-100"
+          >
             <Shield className="w-5 h-5 text-amber-700" />
-            <span className="text-[10px] mt-0.5">Admin</span>
+            <span className="text-[10px] mt-0.5">Masuk Admin</span>
           </button>
         ) : (
           <button
@@ -99,7 +105,7 @@ export const BottomNav: React.FC<BottomNavProps> = ({
               setIsAdminView(false);
               setActiveTab('account');
             }}
-            className={`flex flex-col items-center justify-center py-1.5 rounded-xl transition-all ${
+            className={`flex flex-col items-center justify-center py-1.5 rounded-xl transition-all cursor-pointer ${
               !isAdminView && activeTab === 'account'
                 ? 'text-amber-900 font-bold bg-amber-200/40'
                 : 'text-stone-500 hover:text-stone-800'
