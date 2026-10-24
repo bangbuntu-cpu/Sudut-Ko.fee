@@ -653,37 +653,44 @@ export async function updateOrderStatus(orderId: string, newStatus: OrderStatus)
   setStored(STORAGE_KEYS.ORDERS, cacheOrders);
   notify('orders');
 
-  // Rule: Award points if status changed to 'Selesai' and user is a Member
+  // Rule: Award points if status changed to 'Selesai' and order has points
+  let updatedUser: UserProfile | null = null;
   if (newStatus === 'Selesai' && oldStatus !== 'Selesai' && order.poinDidapat > 0 && order.userId) {
     const userIdx = cacheUsers.findIndex((u) => u.uid === order.userId);
     if (userIdx !== -1) {
       const user = cacheUsers[userIdx];
-      if (user.isMember) {
-        cacheUsers[userIdx] = {
-          ...user,
-          poin: (user.poin || 0) + order.poinDidapat
-        };
-        setStored(STORAGE_KEYS.USERS, cacheUsers);
-        notify('users');
+      const newPoin = (user.poin || 0) + order.poinDidapat;
+      cacheUsers[userIdx] = {
+        ...user,
+        isMember: true,
+        poin: newPoin
+      };
+      updatedUser = cacheUsers[userIdx];
+      setStored(STORAGE_KEYS.USERS, cacheUsers);
+      notify('users');
 
-        // Add Point History
-        const pointRecord: PointHistory = {
-          id: `pth_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
-          userId: order.userId,
-          tipe: 'masuk',
-          jumlah: order.poinDidapat,
-          keterangan: `Poin belanja pesanan #${orderId.slice(0, 6)} (${order.sumber})`,
-          createdAt: now
-        };
-        cachePointHistory.unshift(pointRecord);
-        setStored(STORAGE_KEYS.POINT_HISTORY, cachePointHistory);
-        notify('pointHistory');
-      }
+      // Add Point History
+      const pointRecord: PointHistory = {
+        id: `pth_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+        userId: order.userId,
+        tipe: 'masuk',
+        jumlah: order.poinDidapat,
+        keterangan: `Poin belanja pesanan #${orderId.slice(0, 6)} (${order.sumber})`,
+        createdAt: now
+      };
+      cachePointHistory.unshift(pointRecord);
+      setStored(STORAGE_KEYS.POINT_HISTORY, cachePointHistory);
+      notify('pointHistory');
     }
   }
 
   // Update in Google Spreadsheet
   await postToSheet({ action: 'updateOrderStatus', orderId, newStatus });
+
+  // Direct persistence of user points & member status to Google Spreadsheet
+  if (updatedUser) {
+    await postToSheet({ action: 'saveUser', user: updatedUser });
+  }
 }
 
 /**
@@ -723,30 +730,32 @@ export async function inputManualOfflineOrder(params: {
   setStored(STORAGE_KEYS.ORDERS, cacheOrders);
 
   // If status is immediately Selesai, award points to member
+  let updatedOfflineUser: UserProfile | null = null;
   if (params.status === 'Selesai' && params.poinDidapat > 0 && params.memberId) {
     const userIdx = cacheUsers.findIndex((u) => u.uid === params.memberId);
     if (userIdx !== -1) {
       const user = cacheUsers[userIdx];
-      if (user.isMember) {
-        cacheUsers[userIdx] = {
-          ...user,
-          poin: (user.poin || 0) + params.poinDidapat
-        };
-        setStored(STORAGE_KEYS.USERS, cacheUsers);
-        notify('users');
+      const newPoin = (user.poin || 0) + params.poinDidapat;
+      cacheUsers[userIdx] = {
+        ...user,
+        isMember: true,
+        poin: newPoin
+      };
+      updatedOfflineUser = cacheUsers[userIdx];
+      setStored(STORAGE_KEYS.USERS, cacheUsers);
+      notify('users');
 
-        const pointRecord: PointHistory = {
-          id: `pth_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
-          userId: params.memberId,
-          tipe: 'masuk',
-          jumlah: params.poinDidapat,
-          keterangan: `Poin belanja offline #${id.slice(0, 6)}`,
-          createdAt: now
-        };
-        cachePointHistory.unshift(pointRecord);
-        setStored(STORAGE_KEYS.POINT_HISTORY, cachePointHistory);
-        notify('pointHistory');
-      }
+      const pointRecord: PointHistory = {
+        id: `pth_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 6)}`,
+        userId: params.memberId,
+        tipe: 'masuk',
+        jumlah: params.poinDidapat,
+        keterangan: `Poin belanja offline #${id.slice(0, 6)}`,
+        createdAt: now
+      };
+      cachePointHistory.unshift(pointRecord);
+      setStored(STORAGE_KEYS.POINT_HISTORY, cachePointHistory);
+      notify('pointHistory');
     }
   }
 
@@ -759,6 +768,10 @@ export async function inputManualOfflineOrder(params: {
     id,
     items: JSON.stringify(params.items)
   });
+
+  if (updatedOfflineUser) {
+    await postToSheet({ action: 'saveUser', user: updatedOfflineUser });
+  }
 
   return id;
 }
@@ -842,6 +855,9 @@ export async function redeemReward(userId: string, userName: string, reward: Rew
     namaReward: currentReward.nama,
     poinDipakai: currentReward.poinDibutuhkan
   });
+
+  // Explicitly sync updated user balance to spreadsheet
+  await postToSheet({ action: 'saveUser', user: cacheUsers[userIdx] });
 }
 
 export function subscribeUserPointHistory(

@@ -12,6 +12,60 @@ export interface UserProfile {
   createdAt: string;
 }
 
+export type ProductCategory = 'Coffee' | 'Non Coffee' | 'Black Coffee' | 'Tea Series';
+export const PRODUCT_CATEGORIES: ProductCategory[] = [
+  'Coffee',
+  'Non Coffee',
+  'Black Coffee',
+  'Tea Series'
+];
+
+export interface AdditionalOption {
+  id: string;
+  nama: string;
+  harga: number;
+  keterangan: string;
+  badge: string;
+}
+
+export const ADDITIONAL_OPTIONS: AdditionalOption[] = [
+  {
+    id: 'addon_espresso',
+    nama: 'Espresso',
+    harga: 4000,
+    keterangan: 'Ekstra 1 shot Espresso bold Arabika',
+    badge: 'Extra Shot'
+  },
+  {
+    id: 'addon_seasalt',
+    nama: 'Seasalt cream',
+    harga: 5000,
+    keterangan: 'Topping krim gurih lembut khas Sudut Ko.fee',
+    badge: 'Topping'
+  },
+  {
+    id: 'addon_oatmilk',
+    nama: 'Oatmilk',
+    harga: 6000,
+    keterangan: 'Ganti atau tambah susu gandum oat creamy ramah nabati',
+    badge: 'Plant Based'
+  },
+  {
+    id: 'addon_almond',
+    nama: 'Almond Milk',
+    harga: 6000,
+    keterangan: 'Ganti atau tambah susu almond dengan aroma nutty',
+    badge: 'Plant Based'
+  },
+  {
+    id: 'addon_upsize',
+    nama: 'Upsize',
+    harga: 4000,
+    keterangan: 'Upgrade cup ke ukuran Large untuk porsi lebih puas',
+    badge: 'Large Cup'
+  }
+];
+
 export interface Product {
   id: string;
   nama: string;

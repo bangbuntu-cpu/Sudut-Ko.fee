@@ -12,7 +12,7 @@ import {
   AlertTriangle,
   RefreshCw
 } from 'lucide-react';
-import { Product } from '../../types';
+import { Product, PRODUCT_CATEGORIES } from '../../types';
 import { addProduct, updateProduct, deleteProduct, syncWithSpreadsheet } from '../../services/dbService';
 import { formatRupiah } from '../../utils/format';
 import { useToast } from '../../context/ToastContext';
@@ -35,7 +35,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products }) => {
 
   // Form fields
   const [nama, setNama] = useState('');
-  const [kategori, setKategori] = useState('Signature');
+  const [kategori, setKategori] = useState<string>('Coffee');
   const [harga, setHarga] = useState<number | ''>('');
   const [stok, setStok] = useState<number | ''>('');
   const [gambar, setGambar] = useState('');
@@ -46,12 +46,12 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products }) => {
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const categories = ['Signature', 'Espresso Based', 'Manual Brew', 'Cold Brew', 'Non-Coffee / Pastry'];
+  const categories = PRODUCT_CATEGORIES;
 
   const handleOpenAdd = () => {
     setEditingProduct(null);
     setNama('');
-    setKategori('Signature');
+    setKategori('Coffee');
     setHarga('');
     setStok('');
     setGambar('https://images.unsplash.com/photo-1541167760496-1628856ab772?q=80&w=600&auto=format&fit=crop');
@@ -62,7 +62,7 @@ export const AdminProducts: React.FC<AdminProductsProps> = ({ products }) => {
   const handleOpenEdit = (p: Product) => {
     setEditingProduct(p);
     setNama(String(p.nama || ''));
-    setKategori(String(p.kategori || 'Signature'));
+    setKategori(String(p.kategori || 'Coffee'));
     setHarga(p.harga);
     setStok(p.stok);
     setGambar(String(p.gambar || ''));

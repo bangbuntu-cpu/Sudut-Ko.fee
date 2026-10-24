@@ -1071,21 +1071,22 @@ function addPointsToMember(usersSheet, historySheet, userId, points, keterangan)
 
   for (var i = 1; i < uData.length; i++) {
     if (uData[i][idIdx] === userId) {
-      var isMember = uData[i][isMemberIdx];
-      if (isMember) {
-        var currentPoin = Number(uData[i][poinIdx]) || 0;
-        usersSheet.getRange(i + 1, poinIdx + 1).setValue(currentPoin + points);
+      var currentPoin = Number(uData[i][poinIdx]) || 0;
+      usersSheet.getRange(i + 1, poinIdx + 1).setValue(currentPoin + points);
 
-        if (historySheet) {
-          historySheet.appendRow([
-            'pth_' + Date.now().toString(36),
-            userId,
-            'masuk',
-            points,
-            keterangan,
-            new Date().toISOString()
-          ]);
-        }
+      if (isMemberIdx !== -1) {
+        usersSheet.getRange(i + 1, isMemberIdx + 1).setValue(true);
+      }
+
+      if (historySheet) {
+        historySheet.appendRow([
+          'pth_' + Date.now().toString(36),
+          userId,
+          'masuk',
+          points,
+          keterangan,
+          new Date().toISOString()
+        ]);
       }
       break;
     }

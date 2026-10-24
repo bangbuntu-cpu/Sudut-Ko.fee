@@ -97,7 +97,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders }) => {
     try {
       await deleteOrder(orderToDelete.id);
       showToast(
-        `Pesanan #${orderToDelete.id.slice(0, 6)} berhasil dihapus dari sistem & Spreadsheet!`,
+        `Pesanan #${orderToDelete.id.slice(0, 6)} berhasil dihapus!`,
         'success'
       );
       if (selectedOrder && selectedOrder.id === orderToDelete.id) {
@@ -255,7 +255,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders }) => {
                           <button
                             onClick={() => setOrderToDelete(order)}
                             className="p-1.5 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 transition"
-                            title="Hapus Pesanan & Sinkron ke Spreadsheet"
+                            title="Hapus Pesanan"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
                           </button>
@@ -377,10 +377,10 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders }) => {
             <div className="pt-2 border-t border-stone-100 flex justify-end">
               <button
                 onClick={() => setOrderToDelete(selectedOrder)}
-                className="px-3 py-2 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-xl transition flex items-center gap-1.5"
+                className="px-3 py-2 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-xl transition flex items-center gap-1.5 cursor-pointer"
               >
                 <Trash2 className="w-3.5 h-3.5" />
-                <span>Hapus Pesanan Ini dari Spreadsheet</span>
+                <span>Hapus Pesanan</span>
               </button>
             </div>
           </div>
@@ -396,7 +396,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders }) => {
           title={`Ubah Status ke "${statusChangeTarget.newStatus}"?`}
           message={
             statusChangeTarget.newStatus === 'Selesai'
-              ? `Pesanan akan ditandai selesai. Jika konsumen adalah Member resmi, poin loyalitas (+${statusChangeTarget.order.poinDidapat} PTS) akan otomatis ditambahkan ke akun konsumen!`
+              ? `Pesanan akan ditandai selesai. Poin loyalitas (+${statusChangeTarget.order.poinDidapat} PTS) akan otomatis ditambahkan ke akun member!`
               : `Status pesanan #${statusChangeTarget.order.id.slice(0, 6)} akan diubah menjadi ${statusChangeTarget.newStatus}.`
           }
           confirmLabel={`Ya, Ubah ke ${statusChangeTarget.newStatus}`}
@@ -411,7 +411,7 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders }) => {
           onClose={() => setOrderToDelete(null)}
           onConfirm={handleConfirmDeleteOrder}
           title={`Hapus Pesanan #${orderToDelete.id.slice(0, 8)}?`}
-          message={`Yakin ingin menghapus pesanan ini secara permanen? Data pesanan akan otomatis terhapus dari aplikasi dan Google Spreadsheet!`}
+          message={`Yakin ingin menghapus pesanan ini secara permanen?`}
           confirmLabel="Ya, Hapus Permanen"
           isLoading={isDeletingOrder}
         />

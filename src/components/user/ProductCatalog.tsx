@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Search, Plus, Sparkles, Filter, Coffee, ShoppingBag, Database } from 'lucide-react';
-import { Product, StoreSettings } from '../../types';
+import { Product, StoreSettings, PRODUCT_CATEGORIES } from '../../types';
 import { subscribeProducts, seedDatabaseIfEmpty, subscribeStoreSettings } from '../../services/dbService';
 import { formatRupiah } from '../../utils/format';
 import { useCart } from '../../context/CartContext';
@@ -42,13 +42,14 @@ export const ProductCatalog: React.FC<ProductCatalogProps> = ({ nilaiPerPoin: pr
   const effectiveNilaiPerPoin = propNilaiPerPoin ?? storeSettings?.nilaiPerPoin ?? 13000;
 
   const categories = useMemo(() => {
-    const cats = ['Semua'];
+    const defaultCats = ['Semua', ...PRODUCT_CATEGORIES];
+    const otherCats: string[] = [];
     products.forEach((p) => {
-      if (p.kategori && !cats.includes(p.kategori)) {
-        cats.push(p.kategori);
+      if (p.kategori && !defaultCats.includes(p.kategori) && !otherCats.includes(p.kategori)) {
+        otherCats.push(p.kategori);
       }
     });
-    return cats;
+    return [...defaultCats, ...otherCats];
   }, [products]);
 
   const filteredProducts = useMemo(() => {

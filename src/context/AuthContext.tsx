@@ -249,7 +249,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       nama,
       email,
       role: 'user',
-      isMember: false,
+      isMember: true,
       poin: 0,
       createdAt: new Date().toISOString()
     };

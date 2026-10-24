@@ -1,9 +1,21 @@
 import React, { useState } from 'react';
-import { X, Trash2, Plus, Minus, ShoppingBag, ArrowRight, Sparkles, Lock, LogIn } from 'lucide-react';
+import {
+  X,
+  Trash2,
+  Plus,
+  Minus,
+  ShoppingBag,
+  ArrowRight,
+  Sparkles,
+  LogIn,
+  Check,
+  Coffee
+} from 'lucide-react';
 import { useCart } from '../../context/CartContext';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
 import { formatRupiah, calculatePoints } from '../../utils/format';
+import { ADDITIONAL_OPTIONS, AdditionalOption } from '../../types';
 import { CheckoutModal } from './CheckoutModal';
 import { AuthModal } from '../auth/AuthModal';
 
@@ -20,7 +32,17 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
   onOrderSuccess,
   nilaiPerPoin = 13000
 }) => {
-  const { items, updateQuantity, removeFromCart, clearCart, totalPrice, totalItems } = useCart();
+  const {
+    items,
+    updateQuantity,
+    removeFromCart,
+    clearCart,
+    totalPrice,
+    totalItems,
+    toggleItemAdditional,
+    addStandaloneAdditional,
+    getItemUnitPrice
+  } = useCart();
   const { currentUser, isMember, isAdmin } = useAuth();
   const { showToast } = useToast();
   const [showCheckout, setShowCheckout] = useState(false);
@@ -44,17 +66,53 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
     setShowCheckout(true);
   };
 
+  const handleQuickAddAdditional = (addon: AdditionalOption) => {
+    const drinkItems = items.filter((i) => i.product.kategori !== 'Additional');
+
+    if (drinkItems.length === 0) {
+      // No drinks in cart yet, add as standalone item
+      addStandaloneAdditional(addon);
+      showToast(`${addon.nama} dimasukkan ke keranjang`, 'success');
+      return;
+    }
+
+    if (drinkItems.length === 1) {
+      // Exactly 1 drink in cart, toggle on that drink
+      const target = drinkItems[0];
+      const isAlreadyAdded = (target.additionals || []).includes(addon.id);
+      toggleItemAdditional(target.product.id, addon.id);
+      showToast(
+        isAlreadyAdded
+          ? `${addon.nama} dihapus dari ${target.product.nama}`
+          : `${addon.nama} ditambahkan ke ${target.product.nama}!`,
+        'success'
+      );
+      return;
+    }
+
+    // Default for multiple drinks: toggle on first drink item
+    const firstDrink = drinkItems[0];
+    const isAlreadyAdded = (firstDrink.additionals || []).includes(addon.id);
+    toggleItemAdditional(firstDrink.product.id, addon.id);
+    showToast(
+      isAlreadyAdded
+        ? `${addon.nama} dihapus dari ${firstDrink.product.nama}`
+        : `${addon.nama} ditambahkan ke ${firstDrink.product.nama}!`,
+      'success'
+    );
+  };
+
   return (
     <>
       <div className="fixed inset-0 z-50 overflow-hidden bg-black/60 backdrop-blur-xs animate-in fade-in duration-200">
-        <div className="absolute inset-y-0 right-0 max-w-full flex pl-10">
-          <div className="w-screen max-w-md bg-[#FAF5EE] text-[#2C1810] shadow-2xl flex flex-col border-l border-stone-200 animate-in slide-from-right duration-300">
+        <div className="absolute inset-y-0 right-0 max-w-full flex pl-6 sm:pl-10">
+          <div className="w-screen max-w-lg bg-[#FAF5EE] text-[#2C1810] shadow-2xl flex flex-col border-l border-stone-200 animate-in slide-from-right duration-300">
             {/* Header */}
-            <div className="p-5 sm:p-6 border-b border-stone-200/80 flex items-center justify-between">
+            <div className="p-5 sm:p-6 border-b border-stone-200/80 flex items-center justify-between bg-white/70">
               <div className="flex items-center gap-2">
                 <ShoppingBag className="w-5 h-5 text-amber-800" />
                 <h2 className="text-lg font-black text-stone-900">
-                  Keranjang ({totalItems})
+                  Keranjang Belanja ({totalItems})
                 </h2>
               </div>
               <div className="flex items-center gap-2">
@@ -77,13 +135,13 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
             </div>
 
             {/* Cart Items List */}
-            <div className="flex-1 overflow-y-auto p-5 sm:p-6 space-y-4">
+            <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4">
               {items.length === 0 ? (
                 <div className="text-center py-16">
                   <div className="w-16 h-16 rounded-full bg-amber-100 text-amber-800 flex items-center justify-center mx-auto mb-3">
                     <ShoppingBag className="w-8 h-8 opacity-60" />
                   </div>
-                  <h3 className="font-bold text-stone-800 text-base">Keranjang Kosong</h3>
+                  <h3 className="font-bold text-stone-800 text-base">Keranjang Masih Kosong</h3>
                   <p className="text-xs text-stone-500 mt-1 max-w-xs mx-auto mb-5">
                     Pilih seduhan kopi favorit Anda dari katalog SUDUT KO.FEE.
                   </p>
@@ -95,77 +153,225 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                   </button>
                 </div>
               ) : (
-                items.map((item) => (
-                  <div
-                    key={item.product.id}
-                    className="bg-white rounded-2xl p-3 sm:p-4 border border-stone-200 shadow-xs flex gap-3.5 items-start"
-                  >
-                    <img
-                      src={item.product.gambar}
-                      alt={item.product.nama}
-                      className="w-16 h-16 sm:w-20 sm:h-20 rounded-xl object-cover shrink-0 bg-stone-100"
-                    />
+                <>
+                  <div className="space-y-3">
+                    {items.map((item) => {
+                      const unitPrice = getItemUnitPrice(item);
+                      const isStandaloneAddon = item.product.kategori === 'Additional';
+                      const selectedAddons = (item.additionals || [])
+                        .map((id) => ADDITIONAL_OPTIONS.find((a) => a.id === id))
+                        .filter(Boolean) as AdditionalOption[];
 
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between gap-1">
-                        <h4 className="font-bold text-xs sm:text-sm text-stone-900 truncate">
-                          {item.product.nama}
-                        </h4>
-                        <button
-                          onClick={() => removeFromCart(item.product.id)}
-                          className="text-stone-400 hover:text-red-600 p-1 rounded-md transition shrink-0 cursor-pointer"
-                          title="Hapus produk"
+                      return (
+                        <div
+                          key={item.product.id}
+                          className="bg-white rounded-2xl p-3.5 sm:p-4 border border-stone-200 shadow-xs flex flex-col gap-3"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
+                          <div className="flex gap-3.5 items-start">
+                            <img
+                              src={item.product.gambar}
+                              alt={item.product.nama}
+                              className="w-16 h-16 sm:w-18 sm:h-18 rounded-xl object-cover shrink-0 bg-stone-100"
+                            />
 
-                      <div className="text-xs font-black text-amber-900 mt-0.5">
-                        {formatRupiah(item.product.harga)}
-                      </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-start justify-between gap-1">
+                                <h4 className="font-bold text-xs sm:text-sm text-stone-900 truncate">
+                                  {item.product.nama}
+                                </h4>
+                                <button
+                                  onClick={() => removeFromCart(item.product.id)}
+                                  className="text-stone-400 hover:text-red-600 p-1 rounded-md transition shrink-0 cursor-pointer"
+                                  title="Hapus produk"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
 
-                      {item.notes && (
-                        <div className="text-[10px] text-stone-500 italic mt-0.5 truncate">
-                          "{item.notes}"
+                              <div className="flex items-baseline gap-2 mt-0.5">
+                                <span className="text-xs font-black text-amber-900">
+                                  {formatRupiah(unitPrice)}
+                                </span>
+                                {unitPrice > item.product.harga && (
+                                  <span className="text-[10px] text-stone-400 line-through">
+                                    {formatRupiah(item.product.harga)}
+                                  </span>
+                                )}
+                              </div>
+
+                              {item.notes && (
+                                <div className="text-[10px] text-stone-500 italic mt-0.5 truncate">
+                                  "{item.notes}"
+                                </div>
+                              )}
+
+                              {/* Quantity & Item Subtotal */}
+                              <div className="flex items-center justify-between mt-2.5">
+                                <div className="flex items-center border border-stone-200 rounded-xl bg-stone-50 p-0.5">
+                                  <button
+                                    type="button"
+                                    onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
+                                    className="w-6 h-6 flex items-center justify-center rounded-lg text-stone-600 hover:bg-white cursor-pointer"
+                                  >
+                                    <Minus className="w-3 h-3" />
+                                  </button>
+                                  <span className="w-8 text-center text-xs font-bold text-stone-900">
+                                    {item.quantity}
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
+                                    disabled={item.quantity >= item.product.stok}
+                                    className="w-6 h-6 flex items-center justify-center rounded-lg text-stone-600 hover:bg-white disabled:opacity-30 cursor-pointer"
+                                  >
+                                    <Plus className="w-3 h-3" />
+                                  </button>
+                                </div>
+
+                                <div className="text-xs font-black text-stone-800">
+                                  {formatRupiah(unitPrice * item.quantity)}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Additional Options for Drinks */}
+                          {!isStandaloneAddon && (
+                            <div className="pt-2 border-t border-stone-100">
+                              <div className="flex items-center justify-between mb-1.5">
+                                <span className="text-[11px] font-bold text-stone-600 flex items-center gap-1">
+                                  <Sparkles className="w-3 h-3 text-amber-600" />
+                                  Tambahan / Additional Minuman:
+                                </span>
+                                {selectedAddons.length > 0 && (
+                                  <span className="text-[10px] text-amber-800 font-bold bg-amber-50 px-2 py-0.5 rounded-full">
+                                    +{selectedAddons.length} Dipilih
+                                  </span>
+                                )}
+                              </div>
+
+                              {/* Toggle Chips for Additional items */}
+                              <div className="flex flex-wrap gap-1.5">
+                                {ADDITIONAL_OPTIONS.map((opt) => {
+                                  const isSelected = (item.additionals || []).includes(opt.id);
+
+                                  return (
+                                    <button
+                                      key={opt.id}
+                                      type="button"
+                                      onClick={() => toggleItemAdditional(item.product.id, opt.id)}
+                                      className={`px-2.5 py-1 rounded-xl text-[11px] font-bold transition flex items-center gap-1 cursor-pointer border ${
+                                        isSelected
+                                          ? 'bg-amber-800 text-white border-amber-800 shadow-xs'
+                                          : 'bg-stone-50 hover:bg-stone-100 text-stone-700 border-stone-200'
+                                      }`}
+                                      title={opt.keterangan}
+                                    >
+                                      {isSelected ? (
+                                        <Check className="w-3 h-3 text-amber-200" />
+                                      ) : (
+                                        <Plus className="w-3 h-3 text-stone-400" />
+                                      )}
+                                      <span>{opt.nama}</span>
+                                      <span
+                                        className={`text-[9px] ${
+                                          isSelected ? 'text-amber-200' : 'text-amber-700'
+                                        }`}
+                                      >
+                                        +{formatRupiah(opt.harga)}
+                                      </span>
+                                    </button>
+                                  );
+                                })}
+                              </div>
+                            </div>
+                          )}
                         </div>
-                      )}
+                      );
+                    })}
+                  </div>
 
-                      {/* Quantity Controller */}
-                      <div className="flex items-center justify-between mt-2.5">
-                        <div className="flex items-center border border-stone-200 rounded-xl bg-stone-50 p-0.5">
-                          <button
-                            type="button"
-                            onClick={() => updateQuantity(item.product.id, item.quantity - 1)}
-                            className="w-6 h-6 flex items-center justify-center rounded-lg text-stone-600 hover:bg-white cursor-pointer"
-                          >
-                            <Minus className="w-3 h-3" />
-                          </button>
-                          <span className="w-8 text-center text-xs font-bold text-stone-900">
-                            {item.quantity}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => updateQuantity(item.product.id, item.quantity + 1)}
-                            disabled={item.quantity >= item.product.stok}
-                            className="w-6 h-6 flex items-center justify-center rounded-lg text-stone-600 hover:bg-white disabled:opacity-30 cursor-pointer"
-                          >
-                            <Plus className="w-3 h-3" />
-                          </button>
+                  {/* Dedicated Additional / Extra Topping Section before Payment */}
+                  <div className="bg-gradient-to-br from-amber-50 to-orange-50/50 rounded-2xl p-4 border border-amber-200/80 shadow-xs space-y-3 mt-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="flex items-center gap-1.5">
+                          <Coffee className="w-4 h-4 text-amber-800" />
+                          <h3 className="text-xs font-black text-amber-950 uppercase tracking-wider">
+                            Mau Tambah Item Additional?
+                          </h3>
                         </div>
-
-                        <div className="text-xs font-bold text-stone-700">
-                          {formatRupiah(item.product.harga * item.quantity)}
-                        </div>
+                        <p className="text-[11px] text-stone-600 mt-0.5">
+                          Tambahkan rasa &amp; topping spesial untuk minumanmu sebelum pembayaran:
+                        </p>
                       </div>
                     </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                      {ADDITIONAL_OPTIONS.map((opt) => {
+                        const isAppliedToAny = items.some((i) =>
+                          (i.additionals || []).includes(opt.id)
+                        );
+
+                        return (
+                          <div
+                            key={opt.id}
+                            className={`p-2.5 rounded-xl border transition flex items-center justify-between gap-2 ${
+                              isAppliedToAny
+                                ? 'bg-amber-100/70 border-amber-300 shadow-2xs'
+                                : 'bg-white border-amber-100 hover:border-amber-300'
+                            }`}
+                          >
+                            <div className="min-w-0 flex-1">
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-bold text-xs text-stone-900 truncate">
+                                  {opt.nama}
+                                </span>
+                                <span className="text-[9px] bg-amber-200/60 text-amber-900 px-1.5 py-0.2 rounded-md font-semibold">
+                                  {opt.badge}
+                                </span>
+                              </div>
+                              <div className="text-[10px] text-stone-500 truncate mt-0.5">
+                                {opt.keterangan}
+                              </div>
+                              <div className="text-xs font-extrabold text-amber-900 mt-0.5">
+                                +{formatRupiah(opt.harga)}
+                              </div>
+                            </div>
+
+                            <button
+                              type="button"
+                              onClick={() => handleQuickAddAdditional(opt)}
+                              className={`px-2.5 py-1.5 rounded-xl text-xs font-bold transition flex items-center gap-1 shrink-0 cursor-pointer ${
+                                isAppliedToAny
+                                  ? 'bg-amber-800 hover:bg-amber-900 text-white'
+                                  : 'bg-amber-100 hover:bg-amber-200 text-amber-900'
+                              }`}
+                            >
+                              {isAppliedToAny ? (
+                                <>
+                                  <Check className="w-3 h-3" />
+                                  <span>Aktif</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Plus className="w-3 h-3" />
+                                  <span>Tambah</span>
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
-                ))
+                </>
               )}
             </div>
 
             {/* Footer Summary & Checkout */}
             {items.length > 0 && (
-              <div className="p-5 sm:p-6 border-t border-stone-200/80 bg-white/70 space-y-3">
+              <div className="p-5 sm:p-6 border-t border-stone-200/80 bg-white shadow-lg space-y-3">
                 {/* Points Preview */}
                 <div className="bg-amber-100/70 border border-amber-300/80 rounded-xl p-2.5 flex items-center justify-between text-xs text-amber-950 font-semibold">
                   <span className="flex items-center gap-1.5">
@@ -176,7 +382,7 @@ export const CartDrawer: React.FC<CartDrawerProps> = ({
                 </div>
 
                 <div className="flex justify-between items-baseline">
-                  <span className="text-xs text-stone-500 font-medium">Total Tagihan:</span>
+                  <span className="text-xs text-stone-500 font-medium">Total Tagihan Belanja:</span>
                   <span className="text-xl font-black text-amber-950">
                     {formatRupiah(totalPrice)}
                   </span>
