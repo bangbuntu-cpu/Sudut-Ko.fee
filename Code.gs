@@ -4,23 +4,19 @@
  * =========================================================================
  * Spreadsheet Link: https://docs.google.com/spreadsheets/d/14QSHPhQKGRPBKnzO-9pWJV8-6JiIBaJ2BSG4oXrWmZw/edit?usp=sharing
  * Spreadsheet ID  : 14QSHPhQKGRPBKnzO-9pWJV8-6JiIBaJ2BSG4oXrWmZw
+ * Web App URL     : https://script.google.com/macros/s/AKfycbw7sDnzIh15Efg2OSeW123YqFJBqa_144QtEtR235YSUi5KKpPJQaOkA_jV-SPVorjB/exec
  *
- * CARA MENGGUNAKAN:
- * 1. Buka spreadsheet Google Anda di atas.
- * 2. Klik menu 'Extensions' (Ekstensi) > 'Apps Script'.
- * 3. Hapus kode default di 'Code.gs', lalu salin & tempel SELURUH isi file ini.
- * 4. Klik ikon Disket (Save) atau tekan Ctrl+S.
- * 5. Jalankan fungsi 'setupSheets' satu kali dari dropdown fungsi untuk membuat
- *    semua Sheet (Users, Orders, Products, Rewards, PointHistory, Redemptions, Settings)
- *    beserta header kolom dan data awal secara otomatis!
- * 6. Klik tombol biru 'Deploy' (Terapkan) di kanan atas > 'New deployment' (Penerapan baru).
- * 7. Pilih tipe 'Web app' (Aplikasi web).
- * 8. Konfigurasi:
- *    - Description: Sudut Kofee API Backend
- *    - Execute as: Me (email Anda)
- *    - Who has access: Anyone (Siapa saja)
- * 9. Klik 'Deploy', berikan izin (Authorize access), lalu salin 'Web app URL'
- *    (berformat: https://script.google.com/macros/s/.../exec).
+ * FITUR DATABASE:
+ * - Users           : Data Profil Pelanggan & Member (Poin, No HP, Alamat, Role)
+ * - UserCredentials : Data Kredensial Terenkripsi (Hash SHA-256 & Salt)
+ * - Orders          : Pesanan Masuk (Online App & Kasir Offline)
+ * - Products        : Katalog Menu Minuman/Kopi (Harga, Stok, Kategori, Foto)
+ * - Rewards         : Daftar Hadiah Penukaran Poin Loyalitas
+ * - PointHistory    : Riwayat Poin Masuk & Keluar Member
+ * - Redemptions     : Riwayat Klaim Penukaran Hadiah
+ * - Settings        : Aturan Poin, Info Toko, QRIS, & Rekening Bank
+ *
+ * SEMUA PENAMBAHAN, PERUBAHAN & PENGHAPUSAN DI WEB TERHUBUNG OTOMATIS!
  * =========================================================================
  */
 
@@ -38,16 +34,18 @@ function getSS() {
   return SpreadsheetApp.getActiveSpreadsheet();
 }
 
+// Helper sanitasi teks nomor telepon/nomor rekening agar tidak error formula di Google Sheet (+62...)
+function sanitizeCell(val) {
+  if (val === null || val === undefined) return '';
+  var str = String(val).trim();
+  if (str.startsWith('+') || str.startsWith('0') || str.startsWith('=')) {
+    return "'" + str;
+  }
+  return val;
+}
+
 /**
- * Inisialisasi otomatis semua Sheet yang dibutuhkan toko:
- * - Users
- * - UserCredentials
- * - Orders
- * - Products
- * - Rewards
- * - PointHistory
- * - Redemptions
- * - Settings
+ * Inisialisasi otomatis semua Sheet yang dibutuhkan toko
  */
 function setupSheets() {
   const ss = getSS();
@@ -61,7 +59,7 @@ function setupSheets() {
           'user_YmFuZ2J1bnR1QGdtYWlsLmNv',
           'Admin SUDUT KO.FEE',
           'bangbuntu@gmail.com',
-          '+62 812-3456-7890',
+          "'+62 812-3456-7890",
           'Ngoro, Mojokerto',
           'admin',
           false,
@@ -78,7 +76,7 @@ function setupSheets() {
           'user_YmFuZ2J1bnR1QGdtYWlsLmNv',
           'bangbuntu@gmail.com',
           'admin_salt_sudutkofee_v1',
-          'b0e062459b790d718496abf22840e39b0ddae96e4d1dc068b8ab7b56a52c9f4a', // Hash of 'Sby12345'
+          'b0e062459b790d718496abf22840e39b0ddae96e4d1dc068b8ab7b56a52c9f4a', // SHA-256 hash of 'Sby12345'
           new Date().toISOString()
         ]
       ]
@@ -265,13 +263,13 @@ function setupSheets() {
       initRows: [
         [
           'SUDUT KO.FEE',
-          '+62 82141837093',
+          "'+62 82141837093",
           'Ngoro, Kec. Ngoro, Kabupaten Mojokerto, Jawa Timur 61385',
           13000,
           'SUDUT KO.FEE',
           'https://drive.google.com/file/d/1kXrn1knajYQbAujuFW5grLAglHtDfAnL/view?usp=sharing',
           'BCA Virtual Account',
-          '1360030935750',
+          "'1360030935750",
           'AYU KUSUMA AIN PUTRI ARDIAN'
         ]
       ]
@@ -284,7 +282,6 @@ function setupSheets() {
       sheet = ss.insertSheet(cfg.name);
     }
 
-    // Set header jika sheet masih kosong
     if (sheet.getLastRow() === 0) {
       sheet.appendRow(cfg.headers);
       var headerRange = sheet.getRange(1, 1, 1, cfg.headers.length);
@@ -293,7 +290,6 @@ function setupSheets() {
       headerRange.setFontColor('#FAF5EE');
       sheet.setFrozenRows(1);
 
-      // Masukkan baris inisialisasi jika ada
       if (cfg.initRows && cfg.initRows.length > 0) {
         cfg.initRows.forEach(function (row) {
           sheet.appendRow(row);
@@ -302,7 +298,7 @@ function setupSheets() {
     }
   });
 
-  return { success: true, message: 'Semua Sheet SUDUT KO.FEE berhasil diinisialisasi!' };
+  return { success: true, message: 'Semua Sheet SUDUT KO.FEE berhasil disiapkan!' };
 }
 
 /**
@@ -313,8 +309,7 @@ function doGet(e) {
     const action = e && e.parameter ? e.parameter.action : 'getAllData';
 
     if (action === 'init' || action === 'setupSheets') {
-      const res = setupSheets();
-      return jsonResponse(res);
+      return jsonResponse(setupSheets());
     }
 
     if (action === 'getAllData') {
@@ -350,15 +345,6 @@ function doGet(e) {
       return jsonResponse({ success: true, data: getSettingsObject() });
     }
 
-    if (action === 'getUserProfile') {
-      const uid = e.parameter.uid;
-      const users = getSheetDataAsObjects('Users');
-      const user = users.find(function (u) {
-        return u.uid === uid;
-      });
-      return jsonResponse({ success: true, data: user || null });
-    }
-
     return jsonResponse({ success: false, message: 'Aksi tidak dikenal: ' + action });
   } catch (error) {
     return jsonResponse({ success: false, error: error.toString() });
@@ -383,66 +369,86 @@ function doPost(e) {
 
     const action = payload.action;
 
-    // 1. Inisialisasi Sheet
+    // 1. Setup / Reset Sheets
     if (action === 'setupSheets' || action === 'init') {
       return jsonResponse(setupSheets());
     }
 
-    // 2. Registrasi Akun User Baru
-    if (action === 'registerUser') {
-      return jsonResponse(handleRegisterUser(payload));
+    // 2. Registrasi / Simpan / Update User (Otomatis Tambah atau Edit)
+    if (
+      action === 'registerUser' ||
+      action === 'saveUser' ||
+      action === 'updateUser' ||
+      action === 'updateMemberStatus'
+    ) {
+      return jsonResponse(handleSaveUser(payload));
     }
 
-    // 3. Update Profil / Member Baru
-    if (action === 'updateMemberStatus' || action === 'updateUser') {
-      return jsonResponse(handleUpdateMemberStatus(payload));
+    // 3. Simpan Kredensial User
+    if (action === 'saveCredential') {
+      return jsonResponse(handleSaveCredential(payload));
     }
 
-    // 4. Tambah Pesanan Baru (Online)
+    // 4. Hapus User / Member
+    if (action === 'deleteUser') {
+      return jsonResponse(handleDeleteUser(payload.uid || payload.id));
+    }
+
+    // 5. Buat Pesanan Baru (Online)
     if (action === 'createOrder') {
       return jsonResponse(handleCreateOrder(payload));
     }
 
-    // 5. Update Status Pesanan (Admin)
+    // 6. Update Status Pesanan (Admin)
     if (action === 'updateOrderStatus') {
       return jsonResponse(handleUpdateOrderStatus(payload));
     }
 
-    // 6. Input Pesanan Kasir Manual (Offline)
+    // 7. Hapus Pesanan
+    if (action === 'deleteOrder') {
+      return jsonResponse(handleDeleteOrder(payload.id || payload.orderId));
+    }
+
+    // 8. Input Pesanan Kasir Manual (Offline)
     if (action === 'manualOfflineOrder') {
       return jsonResponse(handleManualOfflineOrder(payload));
     }
 
-    // 7. Penukaran Hadiah / Redeem Reward
+    // 9. Penukaran Hadiah / Redeem Reward
     if (action === 'redeemReward') {
       return jsonResponse(handleRedeemReward(payload));
     }
 
-    // 8. CRUD Produk
+    // 10. CRUD Produk
     if (action === 'addProduct') {
-      return jsonResponse(handleAddProduct(payload.product));
+      return jsonResponse(handleAddProduct(payload.product || payload));
     }
     if (action === 'updateProduct') {
-      return jsonResponse(handleUpdateProduct(payload.id, payload.product));
+      return jsonResponse(handleUpdateProduct(payload.id, payload.product || payload));
     }
     if (action === 'deleteProduct') {
       return jsonResponse(handleDeleteProduct(payload.id));
     }
 
-    // 9. CRUD Reward
+    // 11. CRUD Reward
     if (action === 'addReward') {
-      return jsonResponse(handleAddReward(payload.reward));
+      return jsonResponse(handleAddReward(payload.reward || payload));
     }
     if (action === 'updateReward') {
-      return jsonResponse(handleUpdateReward(payload.id, payload.reward));
+      return jsonResponse(handleUpdateReward(payload.id, payload.reward || payload));
     }
     if (action === 'deleteReward') {
       return jsonResponse(handleDeleteReward(payload.id));
     }
 
-    // 10. Update Pengaturan Toko
+    // 12. Update Pengaturan Toko
     if (action === 'updateSettings') {
-      return jsonResponse(handleUpdateSettings(payload.settings));
+      return jsonResponse(handleUpdateSettings(payload.settings || payload));
+    }
+
+    // 13. Pembersihan Data Demo
+    if (action === 'cleanupDemo') {
+      return jsonResponse(handleCleanupDemo());
     }
 
     return jsonResponse({ success: false, message: 'Aksi POST tidak valid: ' + action });
@@ -452,116 +458,174 @@ function doPost(e) {
 }
 
 // =========================================================================
-// HANDLERS
+// HANDLERS PENAMBAHAN, PERUBAHAN & PENGHAPUSAN
 // =========================================================================
 
-function handleRegisterUser(payload) {
+/**
+ * Menyimpan profil user: jika sudah ada maka diupdate, jika belum ada otomatis ditambah baris baru
+ */
+function handleSaveUser(payload) {
   const ss = getSS();
-  const usersSheet = ss.getSheetByName('Users');
-  const credsSheet = ss.getSheetByName('UserCredentials');
-
-  if (!usersSheet || !credsSheet) setupSheets();
-
-  const email = (payload.email || '').trim().toLowerCase();
-  const nama = (payload.nama || '').trim();
-  const uid = payload.uid || 'usr_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
-  const salt = payload.salt || Math.random().toString(36).substring(2);
-  const passwordHash = payload.passwordHash;
-
-  // Cek duplikat email
-  const existingUsers = getSheetDataAsObjects('Users');
-  const isDuplicate = existingUsers.some(function (u) {
-    return (u.email || '').toLowerCase() === email;
-  });
-
-  if (isDuplicate) {
-    return { success: false, error: 'Email sudah terdaftar. Silakan masuk menggunakan akun Anda.' };
+  var sheet = ss.getSheetByName('Users');
+  if (!sheet) {
+    setupSheets();
+    sheet = ss.getSheetByName('Users');
   }
 
-  const createdAt = new Date().toISOString();
-
-  // Tambah ke Users sheet (role selalu 'user' untuk pendaftaran publik)
-  usersSheet.appendRow([uid, nama, email, '', '', 'user', false, 0, createdAt]);
-
-  // Simpan kredensial terenkripsi ke UserCredentials sheet
-  credsSheet.appendRow([uid, email, salt, passwordHash, createdAt]);
-
-  return {
-    success: true,
-    user: {
-      uid: uid,
-      nama: nama,
-      email: email,
-      role: 'user',
-      isMember: false,
-      poin: 0,
-      createdAt: createdAt
-    }
-  };
-}
-
-function handleUpdateMemberStatus(payload) {
-  const ss = getSS();
-  const sheet = ss.getSheetByName('Users');
-  if (!sheet) return { success: false, error: 'Sheet Users tidak ditemukan' };
-
-  const uid = payload.uid;
-  const nama = payload.nama;
-  const noHp = payload.noHp;
-  const alamat = payload.alamat;
+  const user = payload.user || payload;
+  const uid = user.uid || 'usr_' + Date.now().toString(36);
+  const email = (user.email || '').trim().toLowerCase();
+  const nama = user.nama || '';
+  const noHp = sanitizeCell(user.noHp || '');
+  const alamat = user.alamat || '';
+  const role = user.role || 'user';
+  const isMember = Boolean(user.isMember);
+  const poin = Number(user.poin) || 0;
+  const createdAt = user.createdAt || new Date().toISOString();
 
   const data = sheet.getDataRange().getValues();
-  if (data.length <= 1) return { success: false, error: 'User tidak ditemukan' };
-
   const headers = data[0];
   const uidIdx = headers.indexOf('uid');
-  const namaIdx = headers.indexOf('nama');
-  const noHpIdx = headers.indexOf('noHp');
-  const alamatIdx = headers.indexOf('alamat');
-  const isMemberIdx = headers.indexOf('isMember');
+  const emailIdx = headers.indexOf('email');
+
+  var existingRow = -1;
+  for (var i = 1; i < data.length; i++) {
+    if ((uid && data[i][uidIdx] === uid) || (email && String(data[i][emailIdx]).toLowerCase() === email)) {
+      existingRow = i + 1;
+      break;
+    }
+  }
+
+  if (existingRow !== -1) {
+    // Update baris yang sudah ada
+    var namaIdx = headers.indexOf('nama');
+    var noHpIdx = headers.indexOf('noHp');
+    var alamatIdx = headers.indexOf('alamat');
+    var roleIdx = headers.indexOf('role');
+    var isMemberIdx = headers.indexOf('isMember');
+    var poinIdx = headers.indexOf('poin');
+
+    if (nama && namaIdx !== -1) sheet.getRange(existingRow, namaIdx + 1).setValue(nama);
+    if (noHp && noHpIdx !== -1) sheet.getRange(existingRow, noHpIdx + 1).setValue(noHp);
+    if (alamat && alamatIdx !== -1) sheet.getRange(existingRow, alamatIdx + 1).setValue(alamat);
+    if (role && roleIdx !== -1) sheet.getRange(existingRow, roleIdx + 1).setValue(role);
+    if (isMemberIdx !== -1) sheet.getRange(existingRow, isMemberIdx + 1).setValue(isMember);
+    if (poinIdx !== -1 && user.poin !== undefined) sheet.getRange(existingRow, poinIdx + 1).setValue(poin);
+
+    return { success: true, action: 'updated', uid: uid };
+  } else {
+    // Tambah baris baru jika belum ada
+    sheet.appendRow([uid, nama, email, noHp, alamat, role, isMember, poin, createdAt]);
+    return { success: true, action: 'created', uid: uid };
+  }
+}
+
+/**
+ * Menyimpan kredensial keamanan pengguna ke UserCredentials
+ */
+function handleSaveCredential(payload) {
+  const ss = getSS();
+  var sheet = ss.getSheetByName('UserCredentials');
+  if (!sheet) {
+    setupSheets();
+    sheet = ss.getSheetByName('UserCredentials');
+  }
+
+  const uid = payload.uid;
+  const email = (payload.email || '').trim().toLowerCase();
+  const salt = payload.salt || '';
+  const passwordHash = payload.passwordHash || '';
+  const updatedAt = payload.updatedAt || new Date().toISOString();
+
+  const data = sheet.getDataRange().getValues();
+  const headers = data[0];
+  const uidIdx = headers.indexOf('uid');
 
   for (var i = 1; i < data.length; i++) {
     if (data[i][uidIdx] === uid) {
-      if (nama && namaIdx !== -1) sheet.getRange(i + 1, namaIdx + 1).setValue(nama);
-      if (noHp && noHpIdx !== -1) sheet.getRange(i + 1, noHpIdx + 1).setValue(noHp);
-      if (alamat && alamatIdx !== -1) sheet.getRange(i + 1, alamatIdx + 1).setValue(alamat);
-      if (isMemberIdx !== -1) sheet.getRange(i + 1, isMemberIdx + 1).setValue(true);
+      var pCol = headers.indexOf('passwordHash');
+      var sCol = headers.indexOf('salt');
+      var uCol = headers.indexOf('updatedAt');
+      if (pCol !== -1) sheet.getRange(i + 1, pCol + 1).setValue(passwordHash);
+      if (sCol !== -1) sheet.getRange(i + 1, sCol + 1).setValue(salt);
+      if (uCol !== -1) sheet.getRange(i + 1, uCol + 1).setValue(updatedAt);
       return { success: true };
     }
   }
 
-  return { success: false, error: 'User dengan UID ' + uid + ' tidak ditemukan' };
+  sheet.appendRow([uid, email, salt, passwordHash, updatedAt]);
+  return { success: true };
 }
 
+/**
+ * Hapus user dari Users dan UserCredentials di spreadsheet
+ */
+function handleDeleteUser(uid) {
+  if (!uid) return { success: false, error: 'UID tidak boleh kosong' };
+  const ss = getSS();
+
+  // 1. Hapus dari sheet Users
+  const uSheet = ss.getSheetByName('Users');
+  if (uSheet) {
+    const uData = uSheet.getDataRange().getValues();
+    const uidIdx = uData[0].indexOf('uid');
+    for (var i = uData.length - 1; i >= 1; i--) {
+      if (uData[i][uidIdx] === uid) {
+        uSheet.deleteRow(i + 1);
+      }
+    }
+  }
+
+  // 2. Hapus dari sheet UserCredentials
+  const cSheet = ss.getSheetByName('UserCredentials');
+  if (cSheet) {
+    const cData = cSheet.getDataRange().getValues();
+    const cUidIdx = cData[0].indexOf('uid');
+    for (var j = cData.length - 1; j >= 1; j--) {
+      if (cData[j][cUidIdx] === uid) {
+        cSheet.deleteRow(j + 1);
+      }
+    }
+  }
+
+  return { success: true, message: 'User berhasil dihapus dari Spreadsheet' };
+}
+
+/**
+ * Tambah pesanan online baru ke sheet Orders & potong stok produk
+ */
 function handleCreateOrder(payload) {
   const ss = getSS();
-  const ordersSheet = ss.getSheetByName('Orders');
-  const productsSheet = ss.getSheetByName('Products');
-  if (!ordersSheet) setupSheets();
+  var ordersSheet = ss.getSheetByName('Orders');
+  var productsSheet = ss.getSheetByName('Products');
+  if (!ordersSheet) {
+    setupSheets();
+    ordersSheet = ss.getSheetByName('Orders');
+    productsSheet = ss.getSheetByName('Products');
+  }
 
   const id = payload.id || 'ord_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
   const now = new Date().toISOString();
-
   const itemsJson = typeof payload.items === 'string' ? payload.items : JSON.stringify(payload.items || []);
 
   ordersSheet.appendRow([
     id,
     payload.userId || '',
     payload.userName || '',
-    payload.userPhone || '',
+    sanitizeCell(payload.userPhone || ''),
     payload.userAddress || '',
     itemsJson,
-    payload.total || 0,
+    Number(payload.total) || 0,
     payload.status || 'Menunggu',
     payload.metodeBayar || 'qris',
     payload.sumber || 'online',
-    payload.poinDidapat || 0,
+    Number(payload.poinDidapat) || 0,
     payload.catatan || '',
     now,
     now
   ]);
 
-  // Potong stok produk otomatis
+  // Potong stok produk di spreadsheet
   try {
     const items = typeof payload.items === 'string' ? JSON.parse(payload.items) : payload.items || [];
     if (productsSheet && Array.isArray(items)) {
@@ -581,13 +645,14 @@ function handleCreateOrder(payload) {
         }
       });
     }
-  } catch (err) {
-    // Abaikan kegagalan potong stok non-fatal
-  }
+  } catch (err) {}
 
   return { success: true, orderId: id };
 }
 
+/**
+ * Update status pesanan di sheet Orders
+ */
 function handleUpdateOrderStatus(payload) {
   const ss = getSS();
   const ordersSheet = ss.getSheetByName('Orders');
@@ -596,8 +661,8 @@ function handleUpdateOrderStatus(payload) {
 
   if (!ordersSheet) return { success: false, error: 'Sheet Orders tidak ditemukan' };
 
-  const orderId = payload.orderId;
-  const newStatus = payload.newStatus;
+  const orderId = payload.orderId || payload.id;
+  const newStatus = payload.newStatus || payload.status;
   const now = new Date().toISOString();
 
   const oData = ordersSheet.getDataRange().getValues();
@@ -621,7 +686,13 @@ function handleUpdateOrderStatus(payload) {
 
       // Jika berubah ke 'Selesai' dan konsumen adalah Member, tambahkan poin!
       if (newStatus === 'Selesai' && oldStatus !== 'Selesai' && poinDidapat > 0 && userId && usersSheet) {
-        addPointsToMember(usersSheet, historySheet, userId, poinDidapat, 'Poin pesanan #' + orderId.slice(0, 6) + ' (' + sumber + ')');
+        addPointsToMember(
+          usersSheet,
+          historySheet,
+          userId,
+          poinDidapat,
+          'Poin pesanan #' + orderId.slice(0, 6) + ' (' + sumber + ')'
+        );
       }
 
       return { success: true };
@@ -631,13 +702,44 @@ function handleUpdateOrderStatus(payload) {
   return { success: false, error: 'Pesanan ' + orderId + ' tidak ditemukan' };
 }
 
+/**
+ * Hapus pesanan dari sheet Orders
+ */
+function handleDeleteOrder(orderId) {
+  if (!orderId) return { success: false, error: 'ID Pesanan wajib diisi' };
+  const ss = getSS();
+  const sheet = ss.getSheetByName('Orders');
+  if (!sheet) return { success: false, error: 'Sheet Orders tidak ditemukan' };
+
+  const data = sheet.getDataRange().getValues();
+  const idIdx = data[0].indexOf('id');
+
+  for (var i = data.length - 1; i >= 1; i--) {
+    if (data[i][idIdx] === orderId) {
+      sheet.deleteRow(i + 1);
+      return { success: true, message: 'Pesanan #' + orderId + ' berhasil dihapus dari Spreadsheet' };
+    }
+  }
+
+  return { success: false, error: 'Pesanan tidak ditemukan' };
+}
+
+/**
+ * Input manual offline order dari kasir
+ */
 function handleManualOfflineOrder(payload) {
   const ss = getSS();
-  const ordersSheet = ss.getSheetByName('Orders');
-  const usersSheet = ss.getSheetByName('Users');
-  const historySheet = ss.getSheetByName('PointHistory');
+  var ordersSheet = ss.getSheetByName('Orders');
+  var usersSheet = ss.getSheetByName('Users');
+  var historySheet = ss.getSheetByName('PointHistory');
+  if (!ordersSheet) {
+    setupSheets();
+    ordersSheet = ss.getSheetByName('Orders');
+    usersSheet = ss.getSheetByName('Users');
+    historySheet = ss.getSheetByName('PointHistory');
+  }
 
-  const id = 'ord_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
+  const id = payload.id || 'ord_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
   const now = new Date().toISOString();
   const itemsJson = typeof payload.items === 'string' ? payload.items : JSON.stringify(payload.items || []);
 
@@ -645,26 +747,35 @@ function handleManualOfflineOrder(payload) {
     id,
     payload.memberId || '',
     payload.memberName || '',
-    payload.memberPhone || '',
+    sanitizeCell(payload.memberPhone || ''),
     '',
     itemsJson,
-    payload.total || 0,
+    Number(payload.total) || 0,
     payload.status || 'Selesai',
     payload.metodeBayar || 'qris',
     'offline',
-    payload.poinDidapat || 0,
+    Number(payload.poinDidapat) || 0,
     payload.catatan || 'Transaksi kasir offline',
     now,
     now
   ]);
 
   if (payload.status === 'Selesai' && payload.poinDidapat > 0 && payload.memberId && usersSheet) {
-    addPointsToMember(usersSheet, historySheet, payload.memberId, payload.poinDidapat, 'Poin belanja offline #' + id.slice(0, 6));
+    addPointsToMember(
+      usersSheet,
+      historySheet,
+      payload.memberId,
+      Number(payload.poinDidapat),
+      'Poin belanja offline #' + id.slice(0, 6)
+    );
   }
 
   return { success: true, orderId: id };
 }
 
+/**
+ * Penukaran hadiah (redeem reward)
+ */
 function handleRedeemReward(payload) {
   const ss = getSS();
   const usersSheet = ss.getSheetByName('Users');
@@ -677,41 +788,32 @@ function handleRedeemReward(payload) {
   const poinDipakai = Number(payload.poinDipakai) || 0;
 
   // 1. Kurangi poin user
-  const uData = usersSheet.getDataRange().getValues();
-  const uHeaders = uData[0];
-  const uIdIdx = uHeaders.indexOf('uid');
-  const uPoinIdx = uHeaders.indexOf('poin');
-  const uNameIdx = uHeaders.indexOf('nama');
-  let userName = payload.userName || '';
-
-  var userRow = -1;
-  for (var i = 1; i < uData.length; i++) {
-    if (uData[i][uIdIdx] === userId) {
-      userRow = i + 1;
-      userName = uData[i][uNameIdx] || userName;
-      var curPoin = Number(uData[i][uPoinIdx]) || 0;
-      if (curPoin < poinDipakai) {
-        return { success: false, error: 'Poin tidak mencukupi untuk menukar hadiah ini.' };
+  if (usersSheet) {
+    const uData = usersSheet.getDataRange().getValues();
+    const uHeaders = uData[0];
+    const uIdIdx = uHeaders.indexOf('uid');
+    const uPoinIdx = uHeaders.indexOf('poin');
+    for (var i = 1; i < uData.length; i++) {
+      if (uData[i][uIdIdx] === userId) {
+        var curPoin = Number(uData[i][uPoinIdx]) || 0;
+        usersSheet.getRange(i + 1, uPoinIdx + 1).setValue(Math.max(0, curPoin - poinDipakai));
+        break;
       }
-      usersSheet.getRange(userRow, uPoinIdx + 1).setValue(curPoin - poinDipakai);
-      break;
     }
   }
 
   // 2. Kurangi stok reward
-  const rData = rewardsSheet.getDataRange().getValues();
-  const rHeaders = rData[0];
-  const rIdIdx = rHeaders.indexOf('id');
-  const rStokIdx = rHeaders.indexOf('stok');
-  const rNameIdx = rHeaders.indexOf('nama');
-  let rewardName = payload.namaReward || '';
-
-  for (var r = 1; r < rData.length; r++) {
-    if (rData[r][rIdIdx] === rewardId) {
-      rewardName = rData[r][rNameIdx] || rewardName;
-      var curStok = Number(rData[r][rStokIdx]) || 0;
-      rewardsSheet.getRange(r + 1, rStokIdx + 1).setValue(Math.max(0, curStok - 1));
-      break;
+  if (rewardsSheet) {
+    const rData = rewardsSheet.getDataRange().getValues();
+    const rHeaders = rData[0];
+    const rIdIdx = rHeaders.indexOf('id');
+    const rStokIdx = rHeaders.indexOf('stok');
+    for (var r = 1; r < rData.length; r++) {
+      if (rData[r][rIdIdx] === rewardId) {
+        var curStok = Number(rData[r][rStokIdx]) || 0;
+        rewardsSheet.getRange(r + 1, rStokIdx + 1).setValue(Math.max(0, curStok - 1));
+        break;
+      }
     }
   }
 
@@ -724,7 +826,7 @@ function handleRedeemReward(payload) {
       userId,
       'keluar',
       poinDipakai,
-      'Penukaran reward: ' + rewardName,
+      'Penukaran reward: ' + (payload.namaReward || 'Hadiah'),
       now
     ]);
   }
@@ -734,9 +836,9 @@ function handleRedeemReward(payload) {
     redemptionsSheet.appendRow([
       'rdm_' + Date.now().toString(36),
       userId,
-      userName,
+      payload.userName || '',
       rewardId,
-      rewardName,
+      payload.namaReward || '',
       poinDipakai,
       'Selesai',
       now
@@ -746,10 +848,18 @@ function handleRedeemReward(payload) {
   return { success: true };
 }
 
+/**
+ * Tambah Produk
+ */
 function handleAddProduct(product) {
   const ss = getSS();
-  const sheet = ss.getSheetByName('Products');
-  const id = 'prod_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
+  var sheet = ss.getSheetByName('Products');
+  if (!sheet) {
+    setupSheets();
+    sheet = ss.getSheetByName('Products');
+  }
+
+  const id = product.id || 'prod_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
   const now = new Date().toISOString();
 
   sheet.appendRow([
@@ -760,16 +870,21 @@ function handleAddProduct(product) {
     Number(product.stok) || 0,
     product.kategori || 'Coffee',
     product.gambar || '',
-    now,
-    now
+    product.createdAt || now,
+    product.updatedAt || now
   ]);
 
   return { success: true, id: id };
 }
 
+/**
+ * Update Produk
+ */
 function handleUpdateProduct(id, product) {
   const ss = getSS();
   const sheet = ss.getSheetByName('Products');
+  if (!sheet) return { success: false, error: 'Sheet Products tidak ditemukan' };
+
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
   const idIdx = headers.indexOf('id');
@@ -790,25 +905,38 @@ function handleUpdateProduct(id, product) {
   return { success: false, error: 'Produk tidak ditemukan' };
 }
 
+/**
+ * Hapus Produk dari Sheet Products
+ */
 function handleDeleteProduct(id) {
   const ss = getSS();
   const sheet = ss.getSheetByName('Products');
+  if (!sheet) return { success: false, error: 'Sheet Products tidak ditemukan' };
+
   const data = sheet.getDataRange().getValues();
   const idIdx = data[0].indexOf('id');
 
-  for (var i = 1; i < data.length; i++) {
+  for (var i = data.length - 1; i >= 1; i--) {
     if (data[i][idIdx] === id) {
       sheet.deleteRow(i + 1);
-      return { success: true };
+      return { success: true, message: 'Produk berhasil dihapus dari Spreadsheet' };
     }
   }
   return { success: false, error: 'Produk tidak ditemukan' };
 }
 
+/**
+ * Tambah Reward
+ */
 function handleAddReward(reward) {
   const ss = getSS();
-  const sheet = ss.getSheetByName('Rewards');
-  const id = 'rew_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
+  var sheet = ss.getSheetByName('Rewards');
+  if (!sheet) {
+    setupSheets();
+    sheet = ss.getSheetByName('Rewards');
+  }
+
+  const id = reward.id || 'rew_' + Date.now().toString(36) + Math.random().toString(36).substring(2, 6);
   const now = new Date().toISOString();
 
   sheet.appendRow([
@@ -818,15 +946,20 @@ function handleAddReward(reward) {
     Number(reward.poinDibutuhkan) || 10,
     Number(reward.stok) || 0,
     reward.gambar || '',
-    now
+    reward.createdAt || now
   ]);
 
   return { success: true, id: id };
 }
 
+/**
+ * Update Reward
+ */
 function handleUpdateReward(id, reward) {
   const ss = getSS();
   const sheet = ss.getSheetByName('Rewards');
+  if (!sheet) return { success: false, error: 'Sheet Rewards tidak ditemukan' };
+
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
   const idIdx = headers.indexOf('id');
@@ -845,25 +978,36 @@ function handleUpdateReward(id, reward) {
   return { success: false, error: 'Reward tidak ditemukan' };
 }
 
+/**
+ * Hapus Reward dari Sheet Rewards
+ */
 function handleDeleteReward(id) {
   const ss = getSS();
   const sheet = ss.getSheetByName('Rewards');
+  if (!sheet) return { success: false, error: 'Sheet Rewards tidak ditemukan' };
+
   const data = sheet.getDataRange().getValues();
   const idIdx = data[0].indexOf('id');
 
-  for (var i = 1; i < data.length; i++) {
+  for (var i = data.length - 1; i >= 1; i--) {
     if (data[i][idIdx] === id) {
       sheet.deleteRow(i + 1);
-      return { success: true };
+      return { success: true, message: 'Reward berhasil dihapus dari Spreadsheet' };
     }
   }
   return { success: false, error: 'Reward tidak ditemukan' };
 }
 
+/**
+ * Update Settings Toko
+ */
 function handleUpdateSettings(newSettings) {
   const ss = getSS();
-  const sheet = ss.getSheetByName('Settings');
-  if (!sheet) setupSheets();
+  var sheet = ss.getSheetByName('Settings');
+  if (!sheet) {
+    setupSheets();
+    sheet = ss.getSheetByName('Settings');
+  }
 
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
@@ -871,11 +1015,50 @@ function handleUpdateSettings(newSettings) {
   Object.keys(newSettings).forEach(function (key) {
     var col = headers.indexOf(key);
     if (col !== -1) {
-      sheet.getRange(2, col + 1).setValue(newSettings[key]);
+      var val = newSettings[key];
+      if (key === 'kontak' || key === 'bankAccountNumber') {
+        val = sanitizeCell(val);
+      }
+      sheet.getRange(2, col + 1).setValue(val);
     }
   });
 
   return { success: true };
+}
+
+/**
+ * Pembersihan Data Demo
+ */
+function handleCleanupDemo() {
+  const ss = getSS();
+
+  // Hapus akun demo dari Users
+  const uSheet = ss.getSheetByName('Users');
+  if (uSheet) {
+    const uData = uSheet.getDataRange().getValues();
+    for (var i = uData.length - 1; i >= 1; i--) {
+      var name = String(uData[i][1] || '').toLowerCase();
+      var email = String(uData[i][2] || '').toLowerCase();
+      if ((name.indexOf('demo') !== -1 || email.indexOf('demo') !== -1) && email !== 'bangbuntu@gmail.com') {
+        uSheet.deleteRow(i + 1);
+      }
+    }
+  }
+
+  // Hapus pesanan demo dari Orders
+  const oSheet = ss.getSheetByName('Orders');
+  if (oSheet) {
+    const oData = oSheet.getDataRange().getValues();
+    for (var j = oData.length - 1; j >= 1; j--) {
+      var oName = String(oData[j][2] || '').toLowerCase();
+      var oId = String(oData[j][0] || '').toLowerCase();
+      if (oName.indexOf('demo') !== -1 || oId.indexOf('demo') !== -1) {
+        oSheet.deleteRow(j + 1);
+      }
+    }
+  }
+
+  return { success: true, message: 'Data demo dibersihkan' };
 }
 
 // Helper untuk tambah poin ke member dan catat log
@@ -930,7 +1113,6 @@ function getSheetDataAsObjects(sheetName) {
     for (var c = 0; c < headers.length; c++) {
       var key = headers[c];
       var val = row[c];
-      // Parsing JSON fields jika diperlukan (seperti items pada Orders)
       if (key === 'items' && typeof val === 'string' && val.trim().startsWith('[')) {
         try {
           val = JSON.parse(val);

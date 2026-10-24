@@ -29,7 +29,8 @@ import {
   subscribeAllUsers,
   subscribeStoreSettings,
   seedDatabaseIfEmpty,
-  cleanupAllDemoData
+  cleanupAllDemoData,
+  syncWithSpreadsheet
 } from './services/dbService';
 import { Product, Reward, Order, UserProfile, StoreSettings } from './types';
 import { DEFAULT_SETTINGS } from './services/seedData';
@@ -52,6 +53,13 @@ function MainAppContent() {
   const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]);
   const [storeSettings, setStoreSettings] = useState<StoreSettings>(DEFAULT_SETTINGS);
+
+  // Synchronize live data from Google Spreadsheet on initial load
+  useEffect(() => {
+    syncWithSpreadsheet().catch((err) => {
+      console.warn('Initial spreadsheet sync error:', err);
+    });
+  }, []);
 
   // Auto-seed products & purge demo data when admin is authenticated
   useEffect(() => {

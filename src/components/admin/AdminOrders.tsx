@@ -13,10 +13,11 @@ import {
   Filter,
   Eye,
   X,
-  FileText
+  FileText,
+  Trash2
 } from 'lucide-react';
 import { Order, OrderStatus } from '../../types';
-import { updateOrderStatus } from '../../services/dbService';
+import { updateOrderStatus, deleteOrder } from '../../services/dbService';
 import { formatRupiah, formatDate, getStatusBadge } from '../../utils/format';
 import { useToast } from '../../context/ToastContext';
 import { ConfirmModal } from '../common/ConfirmModal';
@@ -39,6 +40,10 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders }) => {
     newStatus: OrderStatus;
   } | null>(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+
+  // Delete Order Confirmation
+  const [orderToDelete, setOrderToDelete] = useState<Order | null>(null);
+  const [isDeletingOrder, setIsDeletingOrder] = useState(false);
 
   const statuses: OrderStatus[] = ['Menunggu', 'Diproses', 'Selesai', 'Dibatalkan'];
 
@@ -83,6 +88,26 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders }) => {
       showToast(err instanceof Error ? err.message : 'Gagal memperbarui status', 'error');
     } finally {
       setIsUpdatingStatus(false);
+    }
+  };
+
+  const handleConfirmDeleteOrder = async () => {
+    if (!orderToDelete) return;
+    setIsDeletingOrder(true);
+    try {
+      await deleteOrder(orderToDelete.id);
+      showToast(
+        `Pesanan #${orderToDelete.id.slice(0, 6)} berhasil dihapus dari sistem & Spreadsheet!`,
+        'success'
+      );
+      if (selectedOrder && selectedOrder.id === orderToDelete.id) {
+        setSelectedOrder(null);
+      }
+      setOrderToDelete(null);
+    } catch (err: unknown) {
+      showToast(err instanceof Error ? err.message : 'Gagal menghapus pesanan', 'error');
+    } finally {
+      setIsDeletingOrder(false);
     }
   };
 
@@ -225,6 +250,15 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders }) => {
                               Selesaikan
                             </button>
                           )}
+
+                          {/* Delete Order Button */}
+                          <button
+                            onClick={() => setOrderToDelete(order)}
+                            className="p-1.5 rounded-xl border border-rose-200 text-rose-600 hover:bg-rose-50 transition"
+                            title="Hapus Pesanan & Sinkron ke Spreadsheet"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       </td>
                     </tr>
@@ -338,11 +372,22 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders }) => {
                 ))}
               </div>
             </div>
+
+            {/* Hapus Pesanan */}
+            <div className="pt-2 border-t border-stone-100 flex justify-end">
+              <button
+                onClick={() => setOrderToDelete(selectedOrder)}
+                className="px-3 py-2 text-xs font-bold text-rose-700 bg-rose-50 hover:bg-rose-100 rounded-xl transition flex items-center gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Hapus Pesanan Ini dari Spreadsheet</span>
+              </button>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Confirmation Modal */}
+      {/* Confirmation Modal Status Change */}
       {statusChangeTarget && (
         <ConfirmModal
           isOpen={Boolean(statusChangeTarget)}
@@ -356,6 +401,19 @@ export const AdminOrders: React.FC<AdminOrdersProps> = ({ orders }) => {
           }
           confirmLabel={`Ya, Ubah ke ${statusChangeTarget.newStatus}`}
           isLoading={isUpdatingStatus}
+        />
+      )}
+
+      {/* Confirmation Modal Delete Order */}
+      {orderToDelete && (
+        <ConfirmModal
+          isOpen={Boolean(orderToDelete)}
+          onClose={() => setOrderToDelete(null)}
+          onConfirm={handleConfirmDeleteOrder}
+          title={`Hapus Pesanan #${orderToDelete.id.slice(0, 8)}?`}
+          message={`Yakin ingin menghapus pesanan ini secara permanen? Data pesanan akan otomatis terhapus dari aplikasi dan Google Spreadsheet!`}
+          confirmLabel="Ya, Hapus Permanen"
+          isLoading={isDeletingOrder}
         />
       )}
     </div>

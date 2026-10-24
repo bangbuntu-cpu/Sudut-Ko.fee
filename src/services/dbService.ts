@@ -17,6 +17,10 @@ export const SPREADSHEET_ID = '14QSHPhQKGRPBKnzO-9pWJV8-6JiIBaJ2BSG4oXrWmZw';
 export const SPREADSHEET_URL =
   'https://docs.google.com/spreadsheets/d/14QSHPhQKGRPBKnzO-9pWJV8-6JiIBaJ2BSG4oXrWmZw/edit?usp=sharing';
 
+// Permanent Google Apps Script Web App Deployment URL
+export const PERMANENT_SCRIPT_URL =
+  'https://script.google.com/macros/s/AKfycbw7sDnzIh15Efg2OSeW123YqFJBqa_144QtEtR235YSUi5KKpPJQaOkA_jV-SPVorjB/exec';
+
 const STORAGE_KEYS = {
   USERS: 'sudutkofee_sheet_users_v2',
   CREDS: 'sudutkofee_sheet_creds_v2',
@@ -162,35 +166,60 @@ function initDatabaseState() {
 initDatabaseState();
 
 /**
- * Gets the current configured Google Apps Script Web App URL if available.
+ * Gets the permanent Google Apps Script Web App URL.
  */
 export function getScriptUrl(): string {
   try {
-    if (typeof window === 'undefined' || !window.localStorage) return '';
-    return window.localStorage.getItem(STORAGE_KEYS.SCRIPT_URL) || '';
+    if (typeof window === 'undefined' || !window.localStorage) return PERMANENT_SCRIPT_URL;
+    const custom = window.localStorage.getItem(STORAGE_KEYS.SCRIPT_URL);
+    if (custom && custom.trim()) return custom.trim();
+    return PERMANENT_SCRIPT_URL;
   } catch {
-    return '';
+    return PERMANENT_SCRIPT_URL;
   }
 }
 
 /**
- * Sets or updates the Google Apps Script Web App URL.
+ * Sets or updates the Google Apps Script Web App URL if ever overridden.
  */
 export function setScriptUrl(url: string): void {
   try {
     if (typeof window === 'undefined' || !window.localStorage) return;
-    window.localStorage.setItem(STORAGE_KEYS.SCRIPT_URL, url.trim());
-    // Trigger sync if URL is provided
-    if (url.trim()) {
-      syncWithSpreadsheet();
-    }
+    window.localStorage.setItem(STORAGE_KEYS.SCRIPT_URL, url.trim() || PERMANENT_SCRIPT_URL);
+    syncWithSpreadsheet();
   } catch (e) {
     console.error('Failed to set script URL:', e);
   }
 }
 
 /**
- * Performs a background sync with the Google Apps Script Web App if connected.
+ * Sends a POST payload to Google Apps Script Web App reliably.
+ * Uses 'text/plain;charset=utf-8' and 'no-cors' mode so the browser does NOT issue
+ * a preflight OPTIONS request (which Google Apps Script does not accept).
+ * Google Apps Script's doPost(e) directly extracts e.postData.contents and executes immediately.
+ */
+export async function postToSheet(payload: any): Promise<boolean> {
+  const url = getScriptUrl();
+  if (!url) return false;
+
+  try {
+    await fetch(url, {
+      method: 'POST',
+      mode: 'no-cors',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8'
+      },
+      body: JSON.stringify(payload)
+    });
+    return true;
+  } catch (err) {
+    console.warn('Spreadsheet POST sync notification:', err);
+    return false;
+  }
+}
+
+/**
+ * Performs a background sync with the Google Apps Script Web App to pull live data.
  */
 export async function syncWithSpreadsheet(): Promise<boolean> {
   const url = getScriptUrl();
@@ -217,7 +246,17 @@ export async function syncWithSpreadsheet(): Promise<boolean> {
         notify('orders');
       }
       if (Array.isArray(json.users) && json.users.length > 0) {
-        cacheUsers = json.users;
+        // Sanitize any formula error text from sheet
+        cacheUsers = json.users.map((u: UserProfile) => {
+          let cleanPhone = u.noHp || '';
+          if (cleanPhone === '#ERROR!' || cleanPhone === '#VALUE!') {
+            cleanPhone = u.email === ADMIN_EMAIL ? '+62 812-3456-7890' : '';
+          }
+          return {
+            ...u,
+            noHp: cleanPhone
+          };
+        });
         setStored(STORAGE_KEYS.USERS, cacheUsers);
         notify('users');
       }
@@ -232,36 +271,31 @@ export async function syncWithSpreadsheet(): Promise<boolean> {
         notify('redemptions');
       }
       if (json.settings && typeof json.settings === 'object') {
-        cacheSettings = { ...cacheSettings, ...json.settings };
+        let cleanContact = json.settings.kontak || '';
+        if (cleanContact === '#ERROR!' || cleanContact === '#VALUE!') {
+          cleanContact = '+62 82141837093';
+        }
+        cacheSettings = {
+          ...cacheSettings,
+          ...json.settings,
+          kontak: cleanContact
+        };
         setStored(STORAGE_KEYS.SETTINGS, cacheSettings);
         notify('settings');
       }
       return true;
     }
   } catch (err) {
-    // Non-fatal, application continues using synced local storage
     console.warn('Spreadsheet sync attempt:', err);
   }
   return false;
 }
 
-/**
- * Sends a POST payload to Google Apps Script Web App asynchronously.
- */
-async function postToSheet(payload: any): Promise<void> {
-  const url = getScriptUrl();
-  if (!url) return;
-
-  try {
-    await fetch(url, {
-      method: 'POST',
-      mode: 'no-cors', // Apps Script web app responds via 302 redirect; no-cors sends payload reliably
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-  } catch (err) {
-    console.warn('Spreadsheet POST background notification:', err);
-  }
+// Initial background sync on launch
+if (typeof window !== 'undefined') {
+  setTimeout(() => {
+    syncWithSpreadsheet().catch(() => {});
+  }, 100);
 }
 
 // ==================== STORE SETTINGS ====================
@@ -283,7 +317,7 @@ export async function updateStoreSettings(newSettings: Partial<StoreSettings>): 
   setStored(STORAGE_KEYS.SETTINGS, cacheSettings);
   notify('settings');
 
-  postToSheet({ action: 'updateSettings', settings: newSettings });
+  await postToSheet({ action: 'updateSettings', settings: newSettings });
 }
 
 // ==================== USERS & MEMBERS ====================
@@ -302,7 +336,8 @@ export async function createUserProfile(profile: UserProfile): Promise<void> {
   setStored(STORAGE_KEYS.USERS, cacheUsers);
   notify('users');
 
-  postToSheet({ action: 'updateUser', ...profile });
+  // Persist directly to Google Spreadsheet
+  await postToSheet({ action: 'saveUser', user: profile });
 }
 
 export async function registerAsMember(
@@ -321,7 +356,8 @@ export async function registerAsMember(
     setStored(STORAGE_KEYS.USERS, cacheUsers);
     notify('users');
 
-    postToSheet({ action: 'updateMemberStatus', uid, ...memberData });
+    // Persist directly to Google Spreadsheet
+    await postToSheet({ action: 'updateMemberStatus', uid, ...memberData });
   }
 }
 
@@ -331,6 +367,9 @@ export async function deleteUserProfile(uid: string): Promise<void> {
   setStored(STORAGE_KEYS.USERS, cacheUsers);
   setStored(STORAGE_KEYS.CREDS, cacheCreds);
   notify('users');
+
+  // Delete directly from Google Spreadsheet
+  await postToSheet({ action: 'deleteUser', uid, id: uid });
 }
 
 export function subscribeAllUsers(callback: (users: UserProfile[]) => void): () => void {
@@ -365,7 +404,8 @@ export async function addProduct(product: Omit<Product, 'id'>): Promise<string> 
   setStored(STORAGE_KEYS.PRODUCTS, cacheProducts);
   notify('products');
 
-  postToSheet({ action: 'addProduct', product: newProduct });
+  // Insert row in Google Spreadsheet
+  await postToSheet({ action: 'addProduct', product: newProduct });
   return id;
 }
 
@@ -380,7 +420,8 @@ export async function updateProduct(id: string, product: Partial<Product>): Prom
     setStored(STORAGE_KEYS.PRODUCTS, cacheProducts);
     notify('products');
 
-    postToSheet({ action: 'updateProduct', id, product });
+    // Update row in Google Spreadsheet
+    await postToSheet({ action: 'updateProduct', id, product });
   }
 }
 
@@ -389,7 +430,8 @@ export async function deleteProduct(id: string): Promise<void> {
   setStored(STORAGE_KEYS.PRODUCTS, cacheProducts);
   notify('products');
 
-  postToSheet({ action: 'deleteProduct', id });
+  // Delete row in Google Spreadsheet
+  await postToSheet({ action: 'deleteProduct', id });
 }
 
 // ==================== REWARDS ====================
@@ -413,7 +455,8 @@ export async function addReward(reward: Omit<Reward, 'id'>): Promise<string> {
   setStored(STORAGE_KEYS.REWARDS, cacheRewards);
   notify('rewards');
 
-  postToSheet({ action: 'addReward', reward: newReward });
+  // Insert row in Google Spreadsheet
+  await postToSheet({ action: 'addReward', reward: newReward });
   return id;
 }
 
@@ -424,7 +467,8 @@ export async function updateReward(id: string, reward: Partial<Reward>): Promise
     setStored(STORAGE_KEYS.REWARDS, cacheRewards);
     notify('rewards');
 
-    postToSheet({ action: 'updateReward', id, reward });
+    // Update row in Google Spreadsheet
+    await postToSheet({ action: 'updateReward', id, reward });
   }
 }
 
@@ -433,7 +477,8 @@ export async function deleteReward(id: string): Promise<void> {
   setStored(STORAGE_KEYS.REWARDS, cacheRewards);
   notify('rewards');
 
-  postToSheet({ action: 'deleteReward', id });
+  // Delete row in Google Spreadsheet
+  await postToSheet({ action: 'deleteReward', id });
 }
 
 // ==================== ORDERS ====================
@@ -450,7 +495,7 @@ export async function createOrder(orderData: Omit<Order, 'id'>): Promise<string>
   cacheOrders.unshift(newOrder);
   setStored(STORAGE_KEYS.ORDERS, cacheOrders);
 
-  // Potong stok produk
+  // Potong stok produk di lokal
   if (Array.isArray(orderData.items)) {
     orderData.items.forEach((item) => {
       const prodIdx = cacheProducts.findIndex((p) => p.id === item.productId);
@@ -464,13 +509,23 @@ export async function createOrder(orderData: Omit<Order, 'id'>): Promise<string>
 
   notify('orders');
 
-  postToSheet({
+  // Insert row in Google Spreadsheet
+  await postToSheet({
     action: 'createOrder',
     ...newOrder,
     items: JSON.stringify(newOrder.items)
   });
 
   return id;
+}
+
+export async function deleteOrder(orderId: string): Promise<void> {
+  cacheOrders = cacheOrders.filter((o) => o.id !== orderId);
+  setStored(STORAGE_KEYS.ORDERS, cacheOrders);
+  notify('orders');
+
+  // Delete row in Google Spreadsheet
+  await postToSheet({ action: 'deleteOrder', orderId, id: orderId });
 }
 
 export function subscribeUserOrders(userId: string, callback: (orders: Order[]) => void): () => void {
@@ -557,7 +612,8 @@ export async function updateOrderStatus(orderId: string, newStatus: OrderStatus)
     }
   }
 
-  postToSheet({ action: 'updateOrderStatus', orderId, newStatus });
+  // Update in Google Spreadsheet
+  await postToSheet({ action: 'updateOrderStatus', orderId, newStatus });
 }
 
 /**
@@ -626,9 +682,11 @@ export async function inputManualOfflineOrder(params: {
 
   notify('orders');
 
-  postToSheet({
+  // Insert in Google Spreadsheet
+  await postToSheet({
     action: 'manualOfflineOrder',
     ...params,
+    id,
     items: JSON.stringify(params.items)
   });
 
@@ -705,7 +763,8 @@ export async function redeemReward(userId: string, userName: string, reward: Rew
   setStored(STORAGE_KEYS.REDEMPTIONS, cacheRedemptions);
   notify('redemptions');
 
-  postToSheet({
+  // Persist in Google Spreadsheet
+  await postToSheet({
     action: 'redeemReward',
     userId,
     userName,
@@ -788,6 +847,9 @@ export async function saveCredentialForUser(cred: {
     cacheCreds.push({ ...cred, updatedAt: now });
   }
   setStored(STORAGE_KEYS.CREDS, cacheCreds);
+
+  // Sync to Google Spreadsheet UserCredentials sheet
+  await postToSheet({ action: 'saveCredential', ...cred, updatedAt: now });
 }
 
 export async function findUserByEmail(email: string): Promise<UserProfile | null> {
@@ -796,15 +858,14 @@ export async function findUserByEmail(email: string): Promise<UserProfile | null
   return found || null;
 }
 
-// Initial seed helper (used by Admin boot)
+// Initial seed helper
 export async function seedDatabaseIfEmpty(): Promise<{ seeded: boolean; count: number }> {
   initDatabaseState();
   return { seeded: true, count: cacheProducts.length };
 }
 
-// Cleanup helper (used by Admin boot)
+// Cleanup helper
 export async function cleanupAllDemoData(): Promise<{ deletedUsers: number; deletedOrders: number }> {
-  // Purge any unwanted test artifacts
   const initialUserCount = cacheUsers.length;
   const initialOrderCount = cacheOrders.length;
 
@@ -821,6 +882,8 @@ export async function cleanupAllDemoData(): Promise<{ deletedUsers: number; dele
   setStored(STORAGE_KEYS.ORDERS, cacheOrders);
   notify('users');
   notify('orders');
+
+  await postToSheet({ action: 'cleanupDemo' });
 
   return {
     deletedUsers: initialUserCount - cacheUsers.length,
